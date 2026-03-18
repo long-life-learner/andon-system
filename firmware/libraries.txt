@@ -1,0 +1,4 @@
+ESP8266 board package
+WiFiManager by tzapu
+PubSubClient by Nick O'Leary
+ArduinoJson by Benoit Blanchon

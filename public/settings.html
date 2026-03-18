@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Station Settings</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="background-grid"></div>
+    <div class="page-shell">
+      <header class="hero hero-compact">
+        <div class="hero-copy-wrap">
+          <p class="eyebrow">Settings Station</p>
+          <h1>Planned Runtime & Ideal Cycle</h1>
+          <p class="hero-copy">Kelola parameter OEE setiap station langsung dari halaman web.</p>
+        </div>
+        <nav class="top-nav">
+          <a href="/">Dashboard</a>
+          <a href="/station-history.html">History Station</a>
+          <a href="/all-history.html">History Semua Station</a>
+          <a href="/settings.html" class="active">Settings Station</a>
+        </nav>
+      </header>
+
+      <section class="table-card">
+        <div class="section-title">
+          <h2>Konfigurasi Station</h2>
+          <p id="settingsCaption">Memuat daftar station...</p>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Machine Code</th>
+                <th>Station Name</th>
+                <th>Ideal Cycle (s)</th>
+                <th>Planned Runtime (s)</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="settingsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <script src="/common.js"></script>
+    <script src="/settings.js"></script>
+  </body>
+</html>

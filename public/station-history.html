@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Station History</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="background-grid"></div>
+    <div class="page-shell">
+      <header class="hero hero-compact">
+        <div class="hero-copy-wrap">
+          <p class="eyebrow">History Per Station</p>
+          <h1>Detail Riwayat Event Station</h1>
+          <p class="hero-copy">Lihat seluruh event, trend cycle time, filter waktu, dan export CSV per station.</p>
+        </div>
+        <nav class="top-nav">
+          <a href="/">Dashboard</a>
+          <a href="/station-history.html" class="active">History Station</a>
+          <a href="/all-history.html">History Semua Station</a>
+          <a href="/settings.html">Settings Station</a>
+        </nav>
+      </header>
+
+      <section class="toolbar-card">
+        <div class="filter-grid">
+          <label>
+            <span>Station</span>
+            <select id="stationSelect"></select>
+          </label>
+          <label>
+            <span>Dari</span>
+            <input id="fromInput" type="datetime-local" />
+          </label>
+          <label>
+            <span>Sampai</span>
+            <input id="toInput" type="datetime-local" />
+          </label>
+          <div class="button-row">
+            <button id="applyFilterBtn" class="primary-btn">Terapkan</button>
+            <button id="resetFilterBtn" class="secondary-btn">Reset</button>
+            <button id="exportBtn" class="secondary-btn">Export CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="overview-grid">
+        <article class="stat-card"><span>Total Event</span><strong id="totalEvents">0</strong></article>
+        <article class="stat-card"><span>Total QC End</span><strong id="totalQcEnd">0</strong></article>
+        <article class="stat-card"><span>GOOD</span><strong id="totalGood">0</strong></article>
+        <article class="stat-card"><span>REJECT</span><strong id="totalReject">0</strong></article>
+      </section>
+
+      <section class="single-analytics">
+        <article class="chart-card">
+          <div class="section-title">
+            <h2>Trend Cycle Time</h2>
+            <p>Line chart berdasarkan event `qc_end` pada rentang waktu terpilih</p>
+          </div>
+          <div id="stationLineChart" class="chart-shell"></div>
+        </article>
+      </section>
+
+      <section class="table-card">
+        <div class="section-title">
+          <h2>Tabel Event</h2>
+          <p id="tableCaption">Memuat data...</p>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Station</th>
+                <th>Event</th>
+                <th>Result</th>
+                <th>Durasi QC (s)</th>
+              </tr>
+            </thead>
+            <tbody id="eventTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <script src="/common.js"></script>
+    <script src="/station-history.js"></script>
+  </body>
+</html>

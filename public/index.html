@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - Station Monitoring</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="background-grid"></div>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy-wrap">
+          <p class="eyebrow">Dashboard</p>
+          <h1>3D Printing Station Monitoring</h1>
+          <p class="hero-copy">
+            Pantau setiap stasiun produksi secara real-time.
+          </p>
+        </div>
+        <div class="hero-right">
+          <nav class="top-nav">
+            <a href="/" class="active">Dashboard</a>
+            <a href="/station-history.html">History Station</a>
+            <a href="/all-history.html">History Semua Station</a>
+            <a href="/settings.html">Settings Station</a>
+          </nav>
+          <div class="hero-meta">
+            <div class="meta-card">
+              <span>Live Link</span>
+              <strong id="connectionStatus">Connecting...</strong>
+            </div>
+            <div class="meta-card">
+              <span>Data Sync</span>
+              <strong id="generatedAt">-</strong>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="overview-grid">
+        <article class="stat-card">
+          <span>Total Produksi</span>
+          <strong id="totalProduction">0</strong>
+          <small id="productionHealth">Produk selesai QC</small>
+        </article>
+        <article class="stat-card">
+          <span>Total GOOD</span>
+          <strong id="totalGood">0</strong>
+          <small id="goodRateHint">Yield live</small>
+        </article>
+        <article class="stat-card">
+          <span>Total REJECT</span>
+          <strong id="totalReject">0</strong>
+          <small id="rejectRateHint">Defect live</small>
+        </article>
+        <article class="stat-card">
+          <span>Total Waktu QC</span>
+          <strong id="totalQcTime">0 s</strong>
+          <small>Akumulasi semua stasiun</small>
+        </article>
+      </section>
+
+      <section class="analytics-grid">
+        <article class="chart-card">
+          <div class="section-title">
+            <h2>Komposisi Output</h2>
+            <p>Perbandingan GOOD vs REJECT</p>
+          </div>
+          <div class="donut-shell">
+            <div id="qualityDonut" class="donut-chart">
+              <div class="donut-center">
+                <strong id="yieldRate">0%</strong>
+                <span>Yield</span>
+              </div>
+            </div>
+            <div class="legend-list">
+              <div class="legend-row">
+                <span class="legend-swatch good"></span>
+                <span>GOOD</span>
+                <strong id="legendGood">0</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-swatch reject"></span>
+                <span>REJECT</span>
+                <strong id="legendReject">0</strong>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="chart-card">
+          <div class="section-title">
+            <h2>Performa Antar Stasiun</h2>
+            <p>OEE dan volume produksi per mesin</p>
+          </div>
+          <div id="stationPerformanceChart" class="bar-chart"></div>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <div>
+          <div class="section-title">
+            <h2>Stasiun Produksi</h2>
+            <p>Ringkasan tiap station</p>
+          </div>
+          <div id="stationList" class="station-list"></div>
+        </div>
+
+        <aside class="detail-panel">
+          <div class="section-title">
+            <h2>Detail Mesin</h2>
+            <p id="detailMachine">Pilih stasiun</p>
+          </div>
+          <div id="machineSummary" class="machine-summary empty-state">
+            Pilih salah satu stasiun untuk melihat detail event QC.
+          </div>
+          <div class="section-title compact-title">
+            <h2>Tren 10 Siklus Terakhir</h2>
+            <p>Cycle time dan hasil QC</p>
+          </div>
+          <div id="selectedStationChart" class="mini-chart empty-state">
+            Belum ada data siklus.
+          </div>
+          <div class="section-title compact-title">
+            <h2>10 Event Terakhir</h2>
+            <p>Log terbaru</p>
+          </div>
+          <div id="historyList" class="history-list"></div>
+        </aside>
+      </section>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

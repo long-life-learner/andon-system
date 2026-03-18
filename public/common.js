@@ -1,0 +1,156 @@
+function formatDateTime(value) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Date(value).toLocaleString("id-ID", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
+function formatLocalInput(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function localInputToIso(value) {
+  return value ? new Date(value).toISOString() : "";
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows
+    .map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function renderLineChart(container, points, options = {}) {
+  if (!points.length) {
+    container.innerHTML = `<div class="empty-state">Belum ada data untuk divisualisasikan.</div>`;
+    return;
+  }
+
+  const width = 960;
+  const height = 280;
+  const padding = 32;
+  const values = points.map((point) => Number(point.value || 0));
+  const maxValue = Math.max(...values, 1);
+
+  const coords = points.map((point, index) => {
+    const x = points.length === 1 ? width / 2 : padding + (index * (width - padding * 2)) / (points.length - 1);
+    const y = height - padding - (Number(point.value || 0) / maxValue) * (height - padding * 2);
+    return { ...point, x, y };
+  });
+
+  const polyline = coords.map((point) => `${point.x},${point.y}`).join(" ");
+  const fillPath = `${polyline} ${coords.at(-1).x},${height - padding} ${coords[0].x},${height - padding}`;
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" class="line-chart-svg" role="img" aria-label="${escapeHtml(options.title || "Line chart")}">
+      <defs>
+        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(85,240,255,0.45)"></stop>
+          <stop offset="100%" stop-color="rgba(85,240,255,0.03)"></stop>
+        </linearGradient>
+      </defs>
+      <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="chart-axis"></line>
+      <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" class="chart-axis"></line>
+      <polygon points="${fillPath}" class="chart-area"></polygon>
+      <polyline points="${polyline}" class="chart-line"></polyline>
+      ${coords
+        .map(
+          (point) => `
+            <circle cx="${point.x}" cy="${point.y}" r="4" class="chart-point"></circle>
+            <text x="${point.x}" y="${height - 10}" text-anchor="middle" class="chart-label">${escapeHtml(point.label)}</text>
+          `
+        )
+        .join("")}
+    </svg>
+  `;
+}
+
+function renderMultiLineChart(container, series) {
+  const activeSeries = series.filter((item) => item.points.length);
+  if (!activeSeries.length) {
+    container.innerHTML = `<div class="empty-state">Belum ada data untuk divisualisasikan.</div>`;
+    return;
+  }
+
+  const width = 960;
+  const height = 320;
+  const padding = 34;
+  const colorPalette = ["#55f0ff", "#ff6b9f", "#ffbf69", "#2fe1c8", "#9f7aea", "#f97316"];
+  const allPoints = activeSeries.flatMap((item) => item.points.map((point) => Number(point.value || 0)));
+  const maxValue = Math.max(...allPoints, 1);
+  const labels = [...new Set(activeSeries.flatMap((item) => item.points.map((point) => point.label)))];
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" class="line-chart-svg" role="img" aria-label="Multi line chart">
+      <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="chart-axis"></line>
+      <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" class="chart-axis"></line>
+      ${activeSeries
+        .map((item, seriesIndex) => {
+          const coords = item.points.map((point) => {
+            const labelIndex = labels.indexOf(point.label);
+            const x = labels.length === 1 ? width / 2 : padding + (labelIndex * (width - padding * 2)) / (labels.length - 1);
+            const y = height - padding - (Number(point.value || 0) / maxValue) * (height - padding * 2);
+            return { ...point, x, y };
+          });
+
+          const polyline = coords.map((point) => `${point.x},${point.y}`).join(" ");
+          const color = colorPalette[seriesIndex % colorPalette.length];
+          return `
+            <polyline points="${polyline}" fill="none" stroke="${color}" stroke-width="3"></polyline>
+            ${coords.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="3.5" fill="${color}"></circle>`).join("")}
+          `;
+        })
+        .join("")}
+      ${labels
+        .map((label, index) => {
+          const x = labels.length === 1 ? width / 2 : padding + (index * (width - padding * 2)) / (labels.length - 1);
+          return `<text x="${x}" y="${height - 10}" text-anchor="middle" class="chart-label">${escapeHtml(label)}</text>`;
+        })
+        .join("")}
+    </svg>
+    <div class="chart-legend">
+      ${activeSeries
+        .map((item, index) => {
+          const color = colorPalette[index % colorPalette.length];
+          return `
+            <div class="legend-chip">
+              <span class="legend-chip-dot" style="background:${color}"></span>
+              <span>${escapeHtml(item.name)}</span>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}

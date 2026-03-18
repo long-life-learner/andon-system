@@ -1,0 +1,7 @@
+{
+  "machineCode": "STATION-01",
+  "stationName": "QC Station 01",
+  "eventType": "qc_start",
+  "timestamp": "2026-03-15T08:10:00Z",
+  "firmwareVersion": "1.0.0"
+}
