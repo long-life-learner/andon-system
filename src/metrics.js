@@ -1,5 +1,5 @@
-function buildDashboardSummary(db) {
-  const stations = db.prepare(`
+async function buildDashboardSummary(db) {
+  const [stations] = await db.query(`
     SELECT
       s.machine_code AS machineCode,
       s.station_name AS stationName,
@@ -8,11 +8,11 @@ function buildDashboardSummary(db) {
       MAX(e.timestamp) AS lastEventAt
     FROM stations s
     LEFT JOIN qc_events e ON e.machine_code = s.machine_code
-    GROUP BY s.machine_code
+    GROUP BY s.machine_code, s.station_name, s.ideal_cycle_seconds, s.planned_runtime_seconds
     ORDER BY s.machine_code
-  `).all();
+  `);
 
-  const stationMetrics = stations.map((station) => buildStationMetrics(db, station));
+  const stationMetrics = await Promise.all(stations.map((station) => buildStationMetrics(db, station)));
 
   return {
     generatedAt: new Date().toISOString(),
@@ -30,60 +30,75 @@ function buildDashboardSummary(db) {
   };
 }
 
-function buildStationHistory(db, machineCode) {
-  const station = db.prepare(`
-    SELECT
-      machine_code AS machineCode,
-      station_name AS stationName,
-      ideal_cycle_seconds AS idealCycleSeconds,
-      planned_runtime_seconds AS plannedRuntimeSeconds
-    FROM stations
-    WHERE machine_code = ?
-  `).get(machineCode);
+async function buildStationHistory(db, machineCode) {
+  const [stationRows] = await db.execute(
+    `
+      SELECT
+        machine_code AS machineCode,
+        station_name AS stationName,
+        ideal_cycle_seconds AS idealCycleSeconds,
+        planned_runtime_seconds AS plannedRuntimeSeconds
+      FROM stations
+      WHERE machine_code = ?
+    `,
+    [machineCode]
+  );
 
+  const station = stationRows[0];
   if (!station) {
     return { machineCode, stationName: machineCode, events: [] };
   }
 
-  const events = db.prepare(`
-    SELECT
-      id,
-      timestamp,
-      event_type AS eventType,
-      result,
-      duration_seconds AS durationSeconds,
-      meta_json AS metaJson
-    FROM qc_events
-    WHERE machine_code = ?
-    ORDER BY timestamp DESC
-    LIMIT 10
-  `).all(machineCode);
+  const [events] = await db.execute(
+    `
+      SELECT
+        id,
+        timestamp,
+        event_type AS eventType,
+        result,
+        duration_seconds AS durationSeconds,
+        meta_json AS metaJson
+      FROM qc_events
+      WHERE machine_code = ?
+      ORDER BY timestamp DESC
+      LIMIT 10
+    `,
+    [machineCode]
+  );
 
   return {
     ...station,
-    events
+    events: events.map(normalizeEventRow)
   };
 }
 
-function buildStationMetrics(db, station) {
-  const aggregate = db.prepare(`
-    SELECT
-      SUM(CASE WHEN event_type = 'qc_end' THEN 1 ELSE 0 END) AS productionCount,
-      SUM(CASE WHEN event_type = 'qc_end' AND result = 'GOOD' THEN 1 ELSE 0 END) AS goodCount,
-      SUM(CASE WHEN event_type = 'qc_end' AND result = 'REJECT' THEN 1 ELSE 0 END) AS rejectCount,
-      SUM(CASE WHEN event_type = 'qc_end' THEN COALESCE(duration_seconds, 0) ELSE 0 END) AS totalQcSeconds
-    FROM qc_events
-    WHERE machine_code = ?
-  `).get(station.machineCode);
+async function buildStationMetrics(db, station) {
+  const [aggregateRows] = await db.execute(
+    `
+      SELECT
+        SUM(CASE WHEN event_type = 'qc_end' THEN 1 ELSE 0 END) AS productionCount,
+        SUM(CASE WHEN event_type = 'qc_end' AND result = 'GOOD' THEN 1 ELSE 0 END) AS goodCount,
+        SUM(CASE WHEN event_type = 'qc_end' AND result = 'REJECT' THEN 1 ELSE 0 END) AS rejectCount,
+        SUM(CASE WHEN event_type = 'qc_end' THEN COALESCE(duration_seconds, 0) ELSE 0 END) AS totalQcSeconds
+      FROM qc_events
+      WHERE machine_code = ?
+    `,
+    [station.machineCode]
+  );
 
-  const latestEnd = db.prepare(`
-    SELECT duration_seconds AS durationSeconds
-    FROM qc_events
-    WHERE machine_code = ? AND event_type = 'qc_end'
-    ORDER BY timestamp DESC
-    LIMIT 1
-  `).get(station.machineCode);
+  const [latestEndRows] = await db.execute(
+    `
+      SELECT duration_seconds AS durationSeconds
+      FROM qc_events
+      WHERE machine_code = ? AND event_type = 'qc_end'
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `,
+    [station.machineCode]
+  );
 
+  const aggregate = aggregateRows[0] || {};
+  const latestEnd = latestEndRows[0];
   const productionCount = Number(aggregate.productionCount || 0);
   const goodCount = Number(aggregate.goodCount || 0);
   const rejectCount = Number(aggregate.rejectCount || 0);
@@ -91,8 +106,8 @@ function buildStationMetrics(db, station) {
   const avgQcSeconds = productionCount ? totalQcSeconds / productionCount : 0;
   const lastCycleSeconds = latestEnd ? Number(latestEnd.durationSeconds || 0) : 0;
   const quality = productionCount ? goodCount / productionCount : 0;
-  const availability = station.plannedRuntimeSeconds > 0 ? Math.min(totalQcSeconds / station.plannedRuntimeSeconds, 1) : 0;
-  const performance = totalQcSeconds > 0 ? Math.min((station.idealCycleSeconds * productionCount) / totalQcSeconds, 1) : 0;
+  const availability = Number(station.plannedRuntimeSeconds) > 0 ? Math.min(totalQcSeconds / Number(station.plannedRuntimeSeconds), 1) : 0;
+  const performance = totalQcSeconds > 0 ? Math.min((Number(station.idealCycleSeconds) * productionCount) / totalQcSeconds, 1) : 0;
   const oee = availability * performance * quality;
 
   return {
@@ -108,9 +123,16 @@ function buildStationMetrics(db, station) {
     availabilityRate: round2(availability * 100),
     performanceRate: round2(performance * 100),
     oeeRate: round2(oee * 100),
-    idealCycleSeconds: station.idealCycleSeconds,
-    plannedRuntimeSeconds: station.plannedRuntimeSeconds,
-    lastEventAt: station.lastEventAt
+    idealCycleSeconds: Number(station.idealCycleSeconds),
+    plannedRuntimeSeconds: Number(station.plannedRuntimeSeconds),
+    lastEventAt: station.lastEventAt ? new Date(station.lastEventAt).toISOString() : null
+  };
+}
+
+function normalizeEventRow(row) {
+  return {
+    ...row,
+    timestamp: row.timestamp ? new Date(row.timestamp).toISOString() : null
   };
 }
 

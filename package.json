@@ -1,15 +1,15 @@
 {
   "name": "iot-qc-monitoring",
   "version": "1.0.0",
-  "description": "Real-time QC monitoring for 3D printing stations using ESP8266, MQTT, SQLite, and web dashboard.",
+  "description": "Real-time QC monitoring for 3D printing stations using ESP8266, MQTT, MySQL, and web dashboard.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.8.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "mysql2": "^3.11.3",
     "mqtt": "^5.10.4",
     "socket.io": "^4.8.1"
   }

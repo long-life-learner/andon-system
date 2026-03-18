@@ -14,8 +14,6 @@ const server = http.createServer(app);
 const io = new Server(server);
 const port = Number(process.env.PORT || 3000);
 
-initDb();
-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -23,64 +21,60 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
-app.get("/api/stations", (req, res) => {
-  res.json(buildDashboardSummary(getDb()));
-});
+app.get("/api/stations", asyncHandler(async (req, res) => {
+  res.json(await buildDashboardSummary(getDb()));
+}));
 
-app.get("/api/stations/:machineCode/history", (req, res) => {
-  res.json(buildStationHistory(getDb(), req.params.machineCode));
-});
+app.get("/api/stations/:machineCode/history", asyncHandler(async (req, res) => {
+  res.json(await buildStationHistory(getDb(), req.params.machineCode.trim().toUpperCase()));
+}));
 
-app.get("/api/stations/:machineCode/events", (req, res) => {
+app.get("/api/stations/:machineCode/events", asyncHandler(async (req, res) => {
   res.json(
-    buildStationEventHistory(getDb(), req.params.machineCode.trim().toUpperCase(), normalizeRange(req.query))
+    await buildStationEventHistory(getDb(), req.params.machineCode.trim().toUpperCase(), normalizeRange(req.query))
   );
-});
+}));
 
-app.get("/api/events", (req, res) => {
-  res.json(buildAllStationsEventHistory(getDb(), normalizeRange(req.query)));
-});
+app.get("/api/events", asyncHandler(async (req, res) => {
+  res.json(await buildAllStationsEventHistory(getDb(), normalizeRange(req.query)));
+}));
 
-app.post("/api/stations/:machineCode/config", (req, res) => {
+app.post("/api/stations/:machineCode/config", asyncHandler(async (req, res) => {
   const machineCode = req.params.machineCode.trim().toUpperCase();
   const stationName = (req.body.stationName || machineCode).trim();
   const idealCycleSeconds = Number(req.body.idealCycleSeconds || process.env.DEFAULT_IDEAL_CYCLE_SECONDS || 30);
   const plannedRuntimeSeconds = Number(req.body.plannedRuntimeSeconds || process.env.DEFAULT_PLANNED_RUNTIME_SECONDS || 28800);
 
-  upsertStationConfig({
+  await upsertStationConfig({
     machineCode,
     stationName,
     idealCycleSeconds,
     plannedRuntimeSeconds
   });
 
-  const summary = buildDashboardSummary(getDb());
+  const summary = await buildDashboardSummary(getDb());
   io.emit("dashboard:update", summary);
   res.json({ ok: true, machineCode });
-});
+}));
 
-app.post("/api/qc-event", (req, res) => {
+app.post("/api/qc-event", asyncHandler(async (req, res) => {
   try {
     const eventPayload = normalizeEventPayload(req.body);
-    const eventResult = saveQcEvent(eventPayload);
-    pushRealtimeUpdate(io);
+    const eventResult = await saveQcEvent(eventPayload);
+    await pushRealtimeUpdate(io);
     res.json({ ok: true, eventId: eventResult.eventId });
   } catch (error) {
     res.status(400).json({ ok: false, message: error.message });
   }
+}));
+
+io.on("connection", async (socket) => {
+  socket.emit("dashboard:update", await buildDashboardSummary(getDb()));
 });
 
-io.on("connection", (socket) => {
-  socket.emit("dashboard:update", buildDashboardSummary(getDb()));
-});
-
-connectMqtt((payload) => {
-  saveQcEvent(normalizeEventPayload(payload));
-  pushRealtimeUpdate(io);
-});
-
-server.listen(port, () => {
-  console.log(`QC monitoring server running on http://localhost:${port}`);
+bootstrap().catch((error) => {
+  console.error("Failed to start server:", error.message);
+  process.exit(1);
 });
 
 function normalizeEventPayload(payload) {
@@ -115,8 +109,8 @@ function normalizeEventPayload(payload) {
   };
 }
 
-function pushRealtimeUpdate(ioInstance) {
-  ioInstance.emit("dashboard:update", buildDashboardSummary(getDb()));
+async function pushRealtimeUpdate(ioInstance) {
+  ioInstance.emit("dashboard:update", await buildDashboardSummary(getDb()));
 }
 
 function normalizeRange(query) {
@@ -132,5 +126,32 @@ function normalizeDateOrNull(value) {
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  return Number.isNaN(parsed.getTime()) ? null : toMysqlDateTime(parsed);
+}
+
+async function bootstrap() {
+  await initDb();
+
+  connectMqtt(async (payload) => {
+    try {
+      await saveQcEvent(normalizeEventPayload(payload));
+      await pushRealtimeUpdate(io);
+    } catch (error) {
+      console.error("Failed to save MQTT event:", error.message);
+    }
+  });
+
+  server.listen(port, () => {
+    console.log(`QC monitoring server running on http://localhost:${port}`);
+  });
+}
+
+function toMysqlDateTime(value) {
+  return new Date(value).toISOString().slice(0, 23).replace("T", " ");
+}
+
+function asyncHandler(handler) {
+  return (req, res, next) => {
+    Promise.resolve(handler(req, res, next)).catch(next);
+  };
 }

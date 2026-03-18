@@ -5,7 +5,7 @@ Sistem ini mencatat proses QC real-time untuk banyak stasiun produksi menggunaka
 - ESP8266 + sensor digital + sensor warna
 - MQTT untuk komunikasi real-time
 - Node.js untuk backend dan API
-- SQLite untuk database
+- MySQL untuk database
 - Dashboard web real-time dengan Socket.IO
 
 ## Fitur
@@ -28,7 +28,7 @@ Sistem ini mencatat proses QC real-time untuk banyak stasiun produksi menggunaka
 
 1. Install Node.js 18+.
 2. Copy `.env.example` menjadi `.env`.
-3. Sesuaikan `MQTT_URL` dan parameter lain.
+3. Isi konfigurasi MySQL dan MQTT.
 4. Jalankan:
 
 ```bash
@@ -130,7 +130,21 @@ Catatan: firmware sudah menaikkan buffer `PubSubClient` agar payload MQTT yang b
 - `D2` : sensor warna REJECT
 - `D3` : trigger mode konfigurasi
 
+## Konfigurasi MySQL
+
+Tambahkan konfigurasi berikut di `.env`:
+
+```env
+DB_HOST=your-mysql-host
+DB_PORT=3306
+DB_NAME=your_database
+DB_USER=your_user
+DB_PASSWORD=your_password
+```
+
+Saat backend start, tabel `stations` dan `qc_events` akan dibuat otomatis jika belum ada.
+
 ## Catatan
 
 - Broker MQTT tidak dibundel dalam proyek ini. Anda bisa gunakan Mosquitto lokal atau broker cloud.
-- Database default memakai SQLite agar mudah dicoba. Jika nanti perlu skala lebih besar, backend ini bisa dipindah ke MySQL/PostgreSQL.
+- Untuk deployment seperti Vercel, pastikan MySQL hosting Anda mengizinkan koneksi remote dari environment deployment.
