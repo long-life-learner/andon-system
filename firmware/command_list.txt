@@ -1,0 +1,32 @@
+arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2 esp8266_andon
+arduino-cli compile --fqbn esp32:esp32:esp32cam esp32_testpin
+arduino-cli upload -p COM3 --fqbn esp8266:esp8266:nodemcuv2 esp8266_andon
+arduino-cli upload -p COM8 --fqbn esp32:esp32:esp32cam esp32_testpin
+arduino-cli board list
+arduino-cli board search
+arduino-cli board listall
+arduino-cli lib search debouncer
+arduino-cli lib install FTDebouncer
+https://arduino.github.io/arduino-cli/0.32/installation/
+
+AI Thinker ESP32-CAM esp32:esp32:esp32cam esp32:esp32
+DOIT ESP32 DEVKIT V1 esp32:esp32:esp32doit-devkit-v1 esp32:esp32
+ESP32 Dev Module                                                        esp32:esp32:esp32                                  esp32:esp32
+ESP32 FM DevKit                                                         esp32:esp32:fm-devkit                              esp32:esp32
+ESP32 PICO-D4                                                           esp32:esp32:pico32                                 esp32:esp32
+ESP32 Wrover Kit (all versions)                                         esp32:esp32:esp32wroverkit                         esp32:esp32
+ESP32 Wrover Module                                                     esp32:esp32:esp32wrover                            esp32:esp32
+ESP32-S3 PowerFeather                                                   esp32:esp32:esp32s3_powerfeather                   esp32:esp32
+ESP32-S3-Box                                                            esp32:esp32:esp32s3box                             esp32:esp32
+ESP32-S3-USB-OTG                                                        esp32:esp32:esp32s3usbotg                          esp32:esp32
+ESP32-WROOM-DA Module                                                   esp32:esp32:esp32da                                esp32:esp32
+ESP32C3 Dev Module                                                      esp32:esp32:esp32c3                                esp32:esp32
+ESP32S2 Dev Module                                                      esp32:esp32:esp32s2                                esp32:esp32
+LOLIN C3 Mini                                                           esp32:esp32:lolin_c3_mini                          esp32:esp32
+LOLIN D32                                                               esp32:esp32:d32                                    esp32:esp32
+LOLIN D32 PRO                                                           esp32:esp32:d32_pro                                esp32:esp32
+LOLIN S2 Mini                                                           esp32:esp32:lolin_s2_mini                          esp32:esp32
+LOLIN S2 PICO                                                           esp32:esp32:lolin_s2_pico                          esp32:esp32
+LOLIN S3                                                                esp32:esp32:lolin_s3                               esp32:esp32
+LOLIN S3 Mini                                                           esp32:esp32:lolin_s3_mini                          esp32:esp32
+LOLIN S3 Pro                                                            esp32:esp32:lolin_s3_pro                           esp32:esp32

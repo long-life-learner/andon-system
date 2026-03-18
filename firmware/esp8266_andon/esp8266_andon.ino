@@ -9,7 +9,7 @@ static const uint8_t QC_START_PIN = D5;
 static const uint8_t QC_END_PIN = D6;
 static const uint8_t COLOR_GOOD_PIN = D1;
 static const uint8_t COLOR_REJECT_PIN = D2;
-static const uint8_t CONFIG_TRIGGER_PIN = D3;
+static const uint8_t CONFIG_TRIGGER_PIN = D7; 
 static const unsigned long DEBOUNCE_MS = 250;
 static const unsigned long WIFI_BLINK_MS = 1;
 static const unsigned long BROKER_BLINK_MS = 500;
@@ -59,12 +59,12 @@ char mqttServer[64] = "broker.emqx.io";
 char mqttPort[8] = "1883";
 char mqttUser[32] = "";
 char mqttPassword[32] = "";
-char machineCode[24] = "STATION-04";
-char stationName[32] = "QC Station 04";
+char machineCode[24] = "STATION-01";
+char stationName[32] = "Print Station 01";
 char simulationModeText[8] = "OFF";
 char simulationMinSeconds[8] = "5";
 char simulationMaxSeconds[8] = "15";
-char simulationGoodRate[8] = "85";
+char simulationGoodRate[8] = "30";
 
 void saveConfigCallback() {
   configWasSubmitted = true;
@@ -96,6 +96,7 @@ void setup() {
 }
 
 void loop() {
+
   wm.process();
   updateConnectivityState();
   updateStatusLed();
@@ -133,13 +134,13 @@ void setupWifiManager() {
 
   bool forceConfig = digitalRead(CONFIG_TRIGGER_PIN) == LOW;
   configWasSubmitted = false;
-
+  String APName =  String(machineCode) + "-SETUP";
   if (forceConfig) {
     Serial.println("[WIFI] Starting config portal by hardware trigger");
-    wm.startConfigPortal("QC-MONITOR-SETUP");
+    wm.startConfigPortal(APName.c_str());
   } else {
     Serial.println("[WIFI] Trying saved WiFi credentials / autoConnect");
-    wm.autoConnect("QC-MONITOR-SETUP");
+    wm.autoConnect(APName.c_str());
   }
 }
 
@@ -541,8 +542,8 @@ void initWiFiManagerParameters() {
   paramMachineCode = new WiFiManagerParameter("machine_code", "Machine Code", machineCode, sizeof(machineCode));
   paramStationName = new WiFiManagerParameter("station_name", "Station Name", stationName, sizeof(stationName));
   paramSimulationMode = new WiFiManagerParameter("simulation_mode", "Simulation Mode ON/OFF", simulationModeText, sizeof(simulationModeText));
-  paramSimulationMin = new WiFiManagerParameter("simulation_min_s", "Simulation Min QC (s)", simulationMinSeconds, sizeof(simulationMinSeconds));
-  paramSimulationMax = new WiFiManagerParameter("simulation_max_s", "Simulation Max QC (s)", simulationMaxSeconds, sizeof(simulationMaxSeconds));
+  paramSimulationMin = new WiFiManagerParameter("simulation_min_s", "Simulation Min (s)", simulationMinSeconds, sizeof(simulationMinSeconds));
+  paramSimulationMax = new WiFiManagerParameter("simulation_max_s", "Simulation Max (s)", simulationMaxSeconds, sizeof(simulationMaxSeconds));
   paramSimulationGoodRate = new WiFiManagerParameter("simulation_good_pct", "Simulation GOOD Rate %", simulationGoodRate, sizeof(simulationGoodRate));
 }
 

@@ -103,8 +103,8 @@ Isi parameter:
 - `Machine Code`
 - `Station Name`
 - `Simulation Mode ON/OFF`
-- `Simulation Min QC (s)`
-- `Simulation Max QC (s)`
+- `Simulation Min (s)`
+- `Simulation Max (s)`
 - `Simulation GOOD Rate %`
 
 Jika `Simulation Mode` diatur ke `ON`, ESP8266 akan mengirim event `qc_start` dan `qc_end` otomatis walaupun tombol dan sensor belum terhubung.
@@ -128,7 +128,7 @@ Catatan: firmware sudah menaikkan buffer `PubSubClient` agar payload MQTT yang b
 - `D6` : sensor digital selesai QC
 - `D1` : sensor warna GOOD
 - `D2` : sensor warna REJECT
-- `D3` : trigger mode konfigurasi
+- `D7` : trigger mode konfigurasi
 
 ## Konfigurasi MySQL
 

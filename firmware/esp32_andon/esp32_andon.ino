@@ -1,21 +1,31 @@
-#include <ESP8266WiFi.h>
+#include <WiFi.h>
 #include <time.h>
+#include <FS.h>
 #include <LittleFS.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
-static const uint8_t QC_START_PIN = D5;
-static const uint8_t QC_END_PIN = D6;
-static const uint8_t COLOR_GOOD_PIN = D1;
-static const uint8_t COLOR_REJECT_PIN = D2;
-static const uint8_t CONFIG_TRIGGER_PIN = D3;
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 2
+#endif
+
+// Default pin mapping for common ESP32 Dev Module.
+// Adjust these GPIO numbers to match your ESP32 board wiring.
+static const uint8_t QC_START_PIN = 18;
+static const uint8_t QC_END_PIN = 19;
+static const uint8_t COLOR_GOOD_PIN = 21;
+static const uint8_t COLOR_REJECT_PIN = 22;
+static const uint8_t CONFIG_TRIGGER_PIN = 23;
+
 static const unsigned long DEBOUNCE_MS = 250;
 static const unsigned long WIFI_BLINK_MS = 1;
 static const unsigned long BROKER_BLINK_MS = 500;
 static const uint16_t MQTT_BUFFER_SIZE = 512;
+static const uint8_t LED_ON_LEVEL = LOW;
+static const uint8_t LED_OFF_LEVEL = HIGH;
 static const char *CONFIG_FILE = "/config.json";
-static const char *FW_VERSION = "1.1.0";
+static const char *FW_VERSION = "1.1.0-esp32";
 
 enum SystemState {
   STATE_WAIT_WIFI,
@@ -51,7 +61,7 @@ unsigned long lastEndEdgeMs = 0;
 unsigned long lastReconnectAttemptMs = 0;
 unsigned long lastLedToggleMs = 0;
 unsigned long nextSimulationActionMs = 0;
-bool ledState = HIGH;
+bool ledState = LED_OFF_LEVEL;
 String currentQcRunId = "";
 String simulationResult = "GOOD";
 
@@ -59,12 +69,12 @@ char mqttServer[64] = "broker.emqx.io";
 char mqttPort[8] = "1883";
 char mqttUser[32] = "";
 char mqttPassword[32] = "";
-char machineCode[24] = "STATION-04";
-char stationName[32] = "QC Station 04";
+char machineCode[24] = "STATION-ESP32";
+char stationName[32] = "Print Station ESP32";
 char simulationModeText[8] = "OFF";
 char simulationMinSeconds[8] = "5";
 char simulationMaxSeconds[8] = "15";
-char simulationGoodRate[8] = "85";
+char simulationGoodRate[8] = "30";
 
 void saveConfigCallback() {
   configWasSubmitted = true;
@@ -79,11 +89,11 @@ void setup() {
   pinMode(COLOR_REJECT_PIN, INPUT_PULLUP);
   pinMode(CONFIG_TRIGGER_PIN, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_BUILTIN, LED_OFF_LEVEL);
 
-  randomSeed(ESP.getChipId());
+  randomSeed((uint32_t)ESP.getEfuseMac());
 
-  if (!LittleFS.begin()) {
+  if (!LittleFS.begin(true)) {
     Serial.println("LittleFS mount failed");
   }
 
@@ -134,12 +144,13 @@ void setupWifiManager() {
   bool forceConfig = digitalRead(CONFIG_TRIGGER_PIN) == LOW;
   configWasSubmitted = false;
 
+  String apName = String(machineCode) + "-SETUP";
   if (forceConfig) {
     Serial.println("[WIFI] Starting config portal by hardware trigger");
-    wm.startConfigPortal("QC-MONITOR-SETUP");
+    wm.startConfigPortal(apName.c_str());
   } else {
     Serial.println("[WIFI] Trying saved WiFi credentials / autoConnect");
-    wm.autoConnect("QC-MONITOR-SETUP");
+    wm.autoConnect(apName.c_str());
   }
 }
 
@@ -199,8 +210,9 @@ void reconnectMqtt() {
   }
 
   lastReconnectAttemptMs = millis();
-  String clientId = "ESP8266-" + String(machineCode) + "-" + String(ESP.getChipId(), HEX);
+  String clientId = "ESP32-" + String(machineCode) + "-" + getChipIdHex();
   bool connected = false;
+
   Serial.print("[MQTT] Connecting to ");
   Serial.print(mqttServer);
   Serial.print(":");
@@ -230,15 +242,14 @@ void updateStatusLed() {
   } else if (systemState == STATE_WAIT_BROKER) {
     interval = BROKER_BLINK_MS;
   } else {
-    // ESP8266 builtin LED is active-low, so HIGH means off.
-    digitalWrite(LED_BUILTIN, HIGH);
-    ledState = HIGH;
+    digitalWrite(LED_BUILTIN, LED_OFF_LEVEL);
+    ledState = LED_OFF_LEVEL;
     return;
   }
 
   if (millis() - lastLedToggleMs >= interval) {
     lastLedToggleMs = millis();
-    ledState = !ledState;
+    ledState = (ledState == LED_OFF_LEVEL) ? LED_ON_LEVEL : LED_OFF_LEVEL;
     digitalWrite(LED_BUILTIN, ledState);
   }
 }
@@ -541,8 +552,8 @@ void initWiFiManagerParameters() {
   paramMachineCode = new WiFiManagerParameter("machine_code", "Machine Code", machineCode, sizeof(machineCode));
   paramStationName = new WiFiManagerParameter("station_name", "Station Name", stationName, sizeof(stationName));
   paramSimulationMode = new WiFiManagerParameter("simulation_mode", "Simulation Mode ON/OFF", simulationModeText, sizeof(simulationModeText));
-  paramSimulationMin = new WiFiManagerParameter("simulation_min_s", "Simulation Min QC (s)", simulationMinSeconds, sizeof(simulationMinSeconds));
-  paramSimulationMax = new WiFiManagerParameter("simulation_max_s", "Simulation Max QC (s)", simulationMaxSeconds, sizeof(simulationMaxSeconds));
+  paramSimulationMin = new WiFiManagerParameter("simulation_min_s", "Simulation Min (s)", simulationMinSeconds, sizeof(simulationMinSeconds));
+  paramSimulationMax = new WiFiManagerParameter("simulation_max_s", "Simulation Max (s)", simulationMaxSeconds, sizeof(simulationMaxSeconds));
   paramSimulationGoodRate = new WiFiManagerParameter("simulation_good_pct", "Simulation GOOD Rate %", simulationGoodRate, sizeof(simulationGoodRate));
 }
 
@@ -578,4 +589,11 @@ void logActiveConfig(const char *label) {
   Serial.println(simulationMaxSeconds);
   Serial.print("  simulationGoodRate=");
   Serial.println(simulationGoodRate);
+}
+
+String getChipIdHex() {
+  uint64_t chipId = ESP.getEfuseMac();
+  char buffer[17];
+  snprintf(buffer, sizeof(buffer), "%04X%08X", (uint16_t)(chipId >> 32), (uint32_t)chipId);
+  return String(buffer);
 }
