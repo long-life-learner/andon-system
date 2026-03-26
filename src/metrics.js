@@ -79,7 +79,8 @@ async function buildStationMetrics(db, station) {
         SUM(CASE WHEN event_type = 'qc_end' THEN 1 ELSE 0 END) AS productionCount,
         SUM(CASE WHEN event_type = 'qc_end' AND result = 'GOOD' THEN 1 ELSE 0 END) AS goodCount,
         SUM(CASE WHEN event_type = 'qc_end' AND result = 'REJECT' THEN 1 ELSE 0 END) AS rejectCount,
-        SUM(CASE WHEN event_type = 'qc_end' THEN COALESCE(duration_seconds, 0) ELSE 0 END) AS totalQcSeconds
+        SUM(CASE WHEN event_type = 'qc_end' THEN COALESCE(duration_seconds, 0) ELSE 0 END) AS totalQcSeconds,
+        SUM(CASE WHEN event_type = 'qc_end' AND duration_seconds IS NOT NULL THEN 1 ELSE 0 END) AS durationCount
       FROM qc_events
       WHERE machine_code = ?
     `,
@@ -103,8 +104,9 @@ async function buildStationMetrics(db, station) {
   const goodCount = Number(aggregate.goodCount || 0);
   const rejectCount = Number(aggregate.rejectCount || 0);
   const totalQcSeconds = Number(aggregate.totalQcSeconds || 0);
-  const avgQcSeconds = productionCount ? totalQcSeconds / productionCount : 0;
-  const lastCycleSeconds = latestEnd ? Number(latestEnd.durationSeconds || 0) : 0;
+  const durationCount = Number(aggregate.durationCount || 0);
+  const avgQcSeconds = durationCount ? totalQcSeconds / durationCount : null;
+  const lastCycleSeconds = latestEnd && latestEnd.durationSeconds !== null ? Number(latestEnd.durationSeconds) : null;
   const quality = productionCount ? goodCount / productionCount : 0;
   const availability = Number(station.plannedRuntimeSeconds) > 0 ? Math.min(totalQcSeconds / Number(station.plannedRuntimeSeconds), 1) : 0;
   const performance = totalQcSeconds > 0 ? Math.min((Number(station.idealCycleSeconds) * productionCount) / totalQcSeconds, 1) : 0;
@@ -117,7 +119,7 @@ async function buildStationMetrics(db, station) {
     goodCount,
     rejectCount,
     totalQcSeconds,
-    avgQcSeconds: round2(avgQcSeconds),
+    avgQcSeconds: avgQcSeconds === null ? null : round2(avgQcSeconds),
     lastCycleSeconds,
     qualityRate: round2(quality * 100),
     availabilityRate: round2(availability * 100),

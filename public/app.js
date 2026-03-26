@@ -85,11 +85,11 @@ function renderStations(stations) {
             </div>
             <div class="metric-pill">
               <span>Rata-rata QC</span>
-              <strong>${station.avgQcSeconds} s</strong>
+              <strong>${formatDuration(station.avgQcSeconds)}</strong>
             </div>
             <div class="metric-pill">
               <span>Siklus Terakhir</span>
-              <strong>${station.lastCycleSeconds} s</strong>
+              <strong>${formatDuration(station.lastCycleSeconds)}</strong>
             </div>
             <div class="metric-pill">
               <span>Availability</span>
@@ -114,7 +114,7 @@ function renderStations(stations) {
 
 function renderHistory(data) {
   document.getElementById("detailMachine").textContent = `${data.stationName} (${data.machineCode})`;
-  const completedCycles = data.events.filter((event) => event.eventType === "qc_end");
+  const completedCycles = data.events.filter((event) => event.eventType === "qc_end" && event.durationSeconds !== null && event.durationSeconds !== undefined);
 
   document.getElementById("machineSummary").innerHTML = `
     <div class="metric-pill">
@@ -147,7 +147,7 @@ function renderHistory(data) {
           <time>${formatDateTime(event.timestamp)}</time>
           <strong>${event.eventType === "qc_start" ? "QC START" : "QC END"}</strong>
           <div class="history-meta">Result: ${event.result || "-"}</div>
-          <div class="history-meta">Durasi QC: ${event.durationSeconds || 0} s</div>
+          <div class="history-meta">Durasi QC: ${formatDuration(event.durationSeconds)}</div>
         </article>
       `;
     })
@@ -188,7 +188,7 @@ function renderStationPerformanceChart(stations) {
 function renderSelectedStationChart(cycles) {
   const chart = document.getElementById("selectedStationChart");
   if (!cycles.length) {
-    chart.innerHTML = `Belum ada data siklus.`;
+    chart.innerHTML = `Belum ada data durasi siklus.`;
     return;
   }
 
@@ -204,7 +204,7 @@ function renderSelectedStationChart(cycles) {
           <div class="cycle-bar-wrap">
             <div class="cycle-bar ${barClass}" style="height:${height}%"></div>
           </div>
-          <strong>${cycle.durationSeconds || 0}s</strong>
+          <strong>${formatDurationCompact(cycle.durationSeconds)}</strong>
           <span>#${index + 1}</span>
         </div>
       `;
@@ -231,4 +231,12 @@ function formatDateTime(value) {
     minute: "2-digit",
     second: "2-digit"
   });
+}
+
+function formatDuration(value) {
+  return value === null || value === undefined ? "-" : `${Number(value)} s`;
+}
+
+function formatDurationCompact(value) {
+  return value === null || value === undefined ? "-" : `${Number(value)}s`;
 }

@@ -60,11 +60,12 @@ function renderStationHistory(data) {
   renderLineChart(
     document.getElementById("stationLineChart"),
     completed
+      .filter((event) => event.durationSeconds !== null && event.durationSeconds !== undefined)
       .slice()
       .reverse()
       .map((event) => ({
         label: formatDateTime(event.timestamp).slice(11, 16),
-        value: Number(event.durationSeconds || 0)
+        value: Number(event.durationSeconds ?? 0)
       })),
     { title: "Station cycle trend" }
   );
@@ -78,7 +79,7 @@ function renderStationHistory(data) {
               <td>${escapeHtml(event.stationName)}</td>
               <td>${escapeHtml(event.eventType)}</td>
               <td>${escapeHtml(event.result || "-")}</td>
-              <td>${Number(event.durationSeconds || 0)}</td>
+              <td>${formatDurationValue(event.durationSeconds)}</td>
             </tr>
           `
         )
@@ -100,7 +101,7 @@ function exportStationCsv() {
       event.stationName,
       event.eventType,
       event.result || "",
-      Number(event.durationSeconds || 0)
+      formatDurationValue(event.durationSeconds)
     ])
   ];
 
@@ -110,4 +111,8 @@ function exportStationCsv() {
 async function fetchJson(url) {
   const response = await fetch(url);
   return response.json();
+}
+
+function formatDurationValue(value) {
+  return value === null || value === undefined ? "-" : Number(value);
 }

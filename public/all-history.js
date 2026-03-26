@@ -40,11 +40,12 @@ function renderAllHistory(data) {
     name: station.machineCode,
     points: completed
       .filter((event) => event.machineCode === station.machineCode)
+      .filter((event) => event.durationSeconds !== null && event.durationSeconds !== undefined)
       .slice()
       .reverse()
       .map((event) => ({
         label: formatDateTime(event.timestamp).slice(11, 16),
-        value: Number(event.durationSeconds || 0)
+        value: Number(event.durationSeconds ?? 0)
       }))
   }));
 
@@ -60,7 +61,7 @@ function renderAllHistory(data) {
               <td>${escapeHtml(event.stationName)}</td>
               <td>${escapeHtml(event.eventType)}</td>
               <td>${escapeHtml(event.result || "-")}</td>
-              <td>${Number(event.durationSeconds || 0)}</td>
+              <td>${formatDurationValue(event.durationSeconds)}</td>
             </tr>
           `
         )
@@ -87,9 +88,13 @@ function exportAllHistoryCsv() {
       event.stationName,
       event.eventType,
       event.result || "",
-      Number(event.durationSeconds || 0)
+      formatDurationValue(event.durationSeconds)
     ])
   ];
 
   downloadCsv("all-stations-history.csv", rows);
+}
+
+function formatDurationValue(value) {
+  return value === null || value === undefined ? "-" : Number(value);
 }

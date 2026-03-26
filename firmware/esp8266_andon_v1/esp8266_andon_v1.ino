@@ -42,19 +42,15 @@ SystemState systemState = STATE_WAIT_WIFI;
 bool wifiReady = false;
 bool configWasSubmitted = false;
 bool mqttWasConnected = false;
-bool qcRunning = false;
-bool lastStartState = HIGH;
-bool lastEndState = HIGH;
+bool lastGoodState = HIGH;
+bool lastRejectState = HIGH;
 bool simulationMode = false;
-bool simulationPendingEnd = false;
-unsigned long lastStartEdgeMs = 0;
-unsigned long lastEndEdgeMs = 0;
+unsigned long lastGoodEdgeMs = 0;
+unsigned long lastRejectEdgeMs = 0;
 unsigned long lastReconnectAttemptMs = 0;
 unsigned long lastLedToggleMs = 0;
 unsigned long nextSimulationActionMs = 0;
 bool ledState = HIGH;
-String currentQcRunId = "";
-String simulationResult = "GOOD";
 
 char mqttServer[64] = "broker.emqx.io";
 char mqttPort[8] = "1883";
@@ -115,7 +111,7 @@ void loop() {
   if (simulationMode) {
     handleSimulation();
   } else {
-    handleSensorEdges();
+    handleResultSensorEdges();
   }
 }
 
@@ -247,24 +243,33 @@ void updateStatusLed() {
   }
 }
 
-void handleSensorEdges() {
-  bool startState = digitalRead(QC_START_PIN);
-  bool endState = digitalRead(QC_END_PIN);
+void handleResultSensorEdges() {
+  bool goodState = digitalRead(COLOR_GOOD_PIN);
+  bool rejectState = digitalRead(COLOR_REJECT_PIN);
 
-  if (lastStartState == HIGH && startState == LOW && millis() - lastStartEdgeMs > DEBOUNCE_MS) {
-    Serial.println("START");
-    lastStartEdgeMs = millis();
-    startQcRun();
+  if (goodState == LOW && rejectState == LOW) {
+    if (lastGoodState == HIGH || lastRejectState == HIGH) {
+      Serial.println("[SENSOR] GOOD and REJECT active together, event ignored");
+    }
+    lastGoodState = goodState;
+    lastRejectState = rejectState;
+    return;
   }
 
-  if (lastEndState == HIGH && endState == LOW && millis() - lastEndEdgeMs > DEBOUNCE_MS) {
-    Serial.println("FINSIH");
-    lastEndEdgeMs = millis();
-    finishQcRun(detectQcResult(), false);
+  if (lastGoodState == HIGH && goodState == LOW && millis() - lastGoodEdgeMs > DEBOUNCE_MS) {
+    lastGoodEdgeMs = millis();
+    Serial.println("[SENSOR] GOOD triggered");
+    publishQcResult("GOOD", false);
   }
 
-  lastStartState = startState;
-  lastEndState = endState;
+  if (lastRejectState == HIGH && rejectState == LOW && millis() - lastRejectEdgeMs > DEBOUNCE_MS) {
+    lastRejectEdgeMs = millis();
+    Serial.println("[SENSOR] REJECT triggered");
+    publishQcResult("REJECT", false);
+  }
+
+  lastGoodState = goodState;
+  lastRejectState = rejectState;
 }
 
 void handleSimulation() {
@@ -278,67 +283,14 @@ void handleSimulation() {
     return;
   }
 
-  if (!qcRunning) {
-    startQcRun();
-    simulationPendingEnd = true;
-    simulationResult = randomResult();
-    unsigned long cycleSeconds = random(getSimulationMinSeconds(), getSimulationMaxSeconds() + 1);
-    Serial.print("[SIM] Next qc_end in ");
-    Serial.print(cycleSeconds);
-    Serial.print(" second(s), result=");
-    Serial.println(simulationResult);
-    nextSimulationActionMs = millis() + (cycleSeconds * 1000UL);
-    return;
-  }
-
-  if (simulationPendingEnd) {
-    finishQcRun(simulationResult, true);
-    simulationPendingEnd = false;
-    nextSimulationActionMs = millis() + random(1000UL, 5000UL);
-  }
-}
-
-void startQcRun() {
-  if (qcRunning) {
-    return;
-  }
-
-  qcRunning = true;
-  currentQcRunId = String(machineCode) + "-" + String(millis());
-  Serial.print("[QC] START runId=");
-  Serial.println(currentQcRunId);
-  publishEvent("qc_start", "");
-}
-
-void finishQcRun(const String &result, bool simulated) {
-  if (!qcRunning) {
-    return;
-  }
-
-  Serial.print("[QC] END runId=");
-  Serial.print(currentQcRunId);
-  Serial.print(" result=");
-  Serial.print(result);
-  Serial.print(" simulated=");
-  Serial.println(simulated ? "true" : "false");
-  publishEvent("qc_end", result, simulated);
-  qcRunning = false;
-  currentQcRunId = "";
-}
-
-String detectQcResult() {
-  bool goodActive = digitalRead(COLOR_GOOD_PIN) == LOW;
-  bool rejectActive = digitalRead(COLOR_REJECT_PIN) == LOW;
-
-  if (goodActive && !rejectActive) {
-    return "GOOD";
-  }
-
-  if (rejectActive && !goodActive) {
-    return "REJECT";
-  }
-
-  return "REJECT";
+  String result = randomResult();
+  unsigned long waitSeconds = random(getSimulationMinSeconds(), getSimulationMaxSeconds() + 1);
+  Serial.print("[SIM] Publish simulated result in cycle window ");
+  Serial.print(waitSeconds);
+  Serial.print(" second(s), result=");
+  Serial.println(result);
+  publishQcResult(result, true);
+  nextSimulationActionMs = millis() + (waitSeconds * 1000UL);
 }
 
 String randomResult() {
@@ -358,30 +310,31 @@ long getSimulationMaxSeconds() {
   return max(minValue, maxValue);
 }
 
-void publishEvent(const char *eventType, const String &result) {
-  publishEvent(eventType, result, false);
-}
-
-void publishEvent(const char *eventType, const String &result, bool simulated) {
+void publishQcResult(const String &result, bool simulated) {
   if (!mqttClient.connected()) {
-    Serial.print("[MQTT] Skip publish ");
-    Serial.print(eventType);
+    Serial.print("[MQTT] Skip publish qc_end");
     Serial.println(" because broker is not connected");
     return;
   }
 
+  String qcRunId = String(machineCode) + "-" + String(millis());
+  Serial.print("[QC] RESULT runId=");
+  Serial.print(qcRunId);
+  Serial.print(" result=");
+  Serial.print(result);
+  Serial.print(" simulated=");
+  Serial.println(simulated ? "true" : "false");
+
   StaticJsonDocument<448> doc;
   doc["machineCode"] = machineCode;
   doc["stationName"] = stationName;
-  doc["eventType"] = eventType;
-  if (strcmp(eventType, "qc_end") == 0) {
-    doc["result"] = result;
-  }
+  doc["eventType"] = "qc_end";
+  doc["result"] = result;
   doc["timestamp"] = isoTimestamp();
   doc["firmwareVersion"] = FW_VERSION;
   doc["wifiSsid"] = WiFi.SSID();
   doc["ipAddress"] = WiFi.localIP().toString();
-  doc["qcRunId"] = currentQcRunId;
+  doc["qcRunId"] = qcRunId;
   doc["simulationMode"] = simulationMode;
   doc["simulatedEvent"] = simulated;
 
@@ -392,9 +345,7 @@ void publishEvent(const char *eventType, const String &result, bool simulated) {
   Serial.print("[MQTT] Event payload length=");
   Serial.println(len);
   bool published = mqttClient.publish(topic.c_str(), (const uint8_t *)payload, len, false);
-  Serial.print("[MQTT] Publish ");
-  Serial.print(eventType);
-  Serial.print(" to ");
+  Serial.print("[MQTT] Publish qc_end to ");
   Serial.print(topic);
   Serial.print(" -> ");
   Serial.println(published ? "OK" : "FAILED");
