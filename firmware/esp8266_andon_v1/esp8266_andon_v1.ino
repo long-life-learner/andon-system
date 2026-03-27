@@ -11,10 +11,11 @@ static const uint8_t COLOR_GOOD_PIN = D1;
 static const uint8_t COLOR_REJECT_PIN = D2;
 static const uint8_t CONFIG_TRIGGER_PIN = D7; 
 static const uint8_t POWER = D8; 
-static const unsigned long DEBOUNCE_MS = 250;
+static const unsigned long DEBOUNCE_MS = 1000;
 static const unsigned long WIFI_BLINK_MS = 1;
 static const unsigned long BROKER_BLINK_MS = 500;
 static const uint16_t MQTT_BUFFER_SIZE = 512;
+static const uint8_t MQTT_PUBLISH_RETRY_COUNT = 3;
 static const char *CONFIG_FILE = "/config.json";
 static const char *FW_VERSION = "1.1.0";
 
@@ -79,6 +80,9 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
   digitalWrite(POWER, HIGH);
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  WiFi.setAutoReconnect(true);
+  espClient.setNoDelay(true);
 
   randomSeed(ESP.getChipId());
 
@@ -184,11 +188,13 @@ void onWifiConnected() {
   }
 
   mqttClient.setServer(mqttServer, atoi(mqttPort));
+  mqttClient.setKeepAlive(60);
+  mqttClient.setSocketTimeout(10);
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
 
-  Serial.print("[WIFI] Connected. SSID: ");
+  Serial.print("[WIFI] Connected. SSID: ");;
   Serial.print(WiFi.SSID());
-  Serial.print(" IP: ");
+  Serial.print(" IP: ");;
   Serial.println(WiFi.localIP());
   logActiveConfig("Runtime config");
 }
@@ -255,6 +261,20 @@ void handleResultSensorEdges() {
     lastRejectState = rejectState;
     return;
   }
+  // Serial.print("lastGoodState : ");
+  // Serial.println(lastGoodState);
+  // Serial.print("goodState : ");
+  // Serial.println(goodState);
+  // Serial.print("lastGoodEdgeMs : ");
+  // Serial.println(lastGoodEdgeMs);
+  // Serial.print("DEBOUNCE_MS : ");
+  // Serial.println(DEBOUNCE_MS);
+  // Serial.print("lastRejectState : ");
+  // Serial.println(lastRejectState);
+  // Serial.print("rejectState : ");
+  // Serial.println(rejectState);
+  // Serial.print("lastRejectEdgeMs : ");
+  // Serial.println(lastRejectEdgeMs);
 
   if (lastGoodState == HIGH && goodState == LOW && millis() - lastGoodEdgeMs > DEBOUNCE_MS) {
     lastGoodEdgeMs = millis();
@@ -311,9 +331,8 @@ long getSimulationMaxSeconds() {
 }
 
 void publishQcResult(const String &result, bool simulated) {
-  if (!mqttClient.connected()) {
-    Serial.print("[MQTT] Skip publish qc_end");
-    Serial.println(" because broker is not connected");
+  if (!ensureMqttReady()) {
+    Serial.println("[MQTT] Skip publish qc_end because broker is not ready");
     return;
   }
 
@@ -344,7 +363,7 @@ void publishQcResult(const String &result, bool simulated) {
   String topic = "factory/qc/" + String(machineCode) + "/event";
   Serial.print("[MQTT] Event payload length=");
   Serial.println(len);
-  bool published = mqttClient.publish(topic.c_str(), (const uint8_t *)payload, len, false);
+  bool published = publishWithRetry(topic.c_str(), payload, len, false);
   Serial.print("[MQTT] Publish qc_end to ");
   Serial.print(topic);
   Serial.print(" -> ");
@@ -353,8 +372,8 @@ void publishQcResult(const String &result, bool simulated) {
 }
 
 void publishHeartbeat() {
-  if (!mqttClient.connected()) {
-    Serial.println("[MQTT] Skip heartbeat because broker is not connected");
+  if (!ensureMqttReady()) {
+    Serial.println("[MQTT] Skip heartbeat because broker is not ready");
     return;
   }
 
@@ -369,7 +388,7 @@ void publishHeartbeat() {
   char payload[256];
   size_t len = serializeJson(doc, payload);
   String topic = "factory/qc/" + String(machineCode) + "/status";
-  bool published = mqttClient.publish(topic.c_str(), (const uint8_t *)payload, len, true);
+  bool published = publishWithRetry(topic.c_str(), payload, len, true);
   Serial.print("[MQTT] Publish heartbeat -> ");
   Serial.println(published ? "OK" : "FAILED");
 }
@@ -535,4 +554,54 @@ void logActiveConfig(const char *label) {
   Serial.println(simulationMaxSeconds);
   Serial.print("  simulationGoodRate=");
   Serial.println(simulationGoodRate);
+}
+
+bool ensureMqttReady() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[MQTT] WiFi not connected");
+    return false;
+  }
+
+  if (mqttClient.connected()) {
+    return true;
+  }
+
+  reconnectMqtt();
+  mqttClient.loop();
+  delay(100);
+  mqttClient.loop();
+  return mqttClient.connected();
+}
+
+bool publishWithRetry(const char *topic, const char *payload, size_t len, bool retained) {
+  for (uint8_t attempt = 1; attempt <= MQTT_PUBLISH_RETRY_COUNT; attempt++) {
+    if (!ensureMqttReady()) {
+      Serial.print("[MQTT] Publish attempt ");
+      Serial.print(attempt);
+      Serial.println(" aborted because MQTT is not connected");
+      delay(150);
+      continue;
+    }
+
+    bool published = mqttClient.publish(topic, (const uint8_t *)payload, len, retained);
+    mqttClient.loop();
+    delay(50);
+    mqttClient.loop();
+
+    if (published) {
+      if (attempt > 1) {
+        Serial.print("[MQTT] Publish succeeded on retry ");
+        Serial.println(attempt);
+      }
+      return true;
+    }
+
+    Serial.print("[MQTT] Publish attempt ");
+    Serial.print(attempt);
+    Serial.print(" failed, state=");
+    Serial.println(mqttClient.state());
+    delay(150);
+  }
+
+  return false;
 }
