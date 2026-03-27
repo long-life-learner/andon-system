@@ -83,18 +83,7 @@ function renderStations(stations) {
               <span>GOOD / REJECT</span>
               <strong>${station.goodCount} / ${station.rejectCount}</strong>
             </div>
-            <div class="metric-pill">
-              <span>Rata-rata QC</span>
-              <strong>${formatDuration(station.avgQcSeconds)}</strong>
-            </div>
-            <div class="metric-pill">
-              <span>Siklus Terakhir</span>
-              <strong>${formatDuration(station.lastCycleSeconds)}</strong>
-            </div>
-            <div class="metric-pill">
-              <span>Availability</span>
-              <strong>${station.availabilityRate}%</strong>
-            </div>
+            
             <div class="metric-pill">
               <span>Quality</span>
               <strong>${station.qualityRate}%</strong>
@@ -104,7 +93,18 @@ function renderStations(stations) {
       `
     )
     .join("");
-
+// <div class="metric-pill">
+            //   <span>Rata-rata QC</span>
+            //   <strong>${formatDuration(station.avgQcSeconds)}</strong>
+            // </div>
+            // <div class="metric-pill">
+            //   <span>Siklus Terakhir</span>
+            //   <strong>${formatDuration(station.lastCycleSeconds)}</strong>
+            // </div>
+            // <div class="metric-pill">
+            //   <span>Availability</span>
+            //   <strong>${station.availabilityRate}%</strong>
+            // </div>
   stationList.querySelectorAll(".station-card").forEach((card) => {
     card.addEventListener("click", () => {
       loadHistory(card.dataset.machineCode);
