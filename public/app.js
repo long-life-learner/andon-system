@@ -64,15 +64,15 @@ function renderStations(stations) {
 
   stationList.innerHTML = stations
     .map(
-      (station) => `
+      (station) => {
+        if (station.avgQcSeconds === null){
+return `
         <article class="station-card ${station.machineCode === selectedMachineCode ? "active" : ""}" data-machine-code="${station.machineCode}">
           <div class="station-header">
             <div>
               <div class="station-code">${station.machineCode}</div>
               <h3>${station.stationName}</h3>
-              <div class="machine-meta">Last event: ${formatDateTime(station.lastEventAt)}</div>
             </div>
-            <div class="badge oee">${station.oeeRate}% OEE</div>
           </div>
           <div class="station-metrics">
             <div class="metric-pill">
@@ -80,10 +80,10 @@ function renderStations(stations) {
               <strong>${station.productionCount}</strong>
             </div>
             <div class="metric-pill">
-              <span>GOOD / REJECT</span>
+              <span>GOOD / DEFECT</span>
               <strong>${station.goodCount} / ${station.rejectCount}</strong>
             </div>
-            
+
             <div class="metric-pill">
               <span>Quality</span>
               <strong>${station.qualityRate}%</strong>
@@ -91,20 +91,58 @@ function renderStations(stations) {
           </div>
         </article>
       `
+        } else {
+          
+  const maxProduction = Math.max(station.productionCount, 1);
+
+  const productionWidth = Math.max((station.productionCount / maxProduction) * 100, 4);
+      
+          return `
+        <article class="station-card ${station.machineCode === selectedMachineCode ? "active" : ""}" data-machine-code="${station.machineCode}">
+          <div class="station-header">
+            <div>
+              <div class="station-code">${station.machineCode}</div>
+              <h3>${station.stationName}</h3>
+            </div>
+            <div class="badge oee">${station.oeeRate}% OEE</div>
+          </div>
+          <div class="station-metrics">
+           
+            <div class="metric-pill">
+              <span>Availability</span>
+              <strong>${station.availabilityRate}%</strong>
+            </div>
+            <div class="metric-pill">
+              <span>Performance</span>
+              <strong>${productionWidth} %</strong>
+            </div>
+            <div class="metric-pill">
+              <span>Quality</span>
+              <strong>${station.qualityRate}%</strong>
+            </div>
+            
+            <div class="metric-pill">
+              <span>Produksi</span>
+              <strong>${station.productionCount}</strong>
+            </div>
+            <div class="metric-pill">
+              <span>GOOD / DEFECT</span>
+              <strong>${station.goodCount} / ${station.rejectCount}</strong>
+            </div>
+             
+            <div class="metric-pill">
+              <span>Rata-rata QC</span>
+              <strong>${formatDuration(station.avgQcSeconds)}</strong>
+            </div>
+            
+          </div>
+        </article>
+      `
+        }
+        }
     )
     .join("");
-// <div class="metric-pill">
-            //   <span>Rata-rata QC</span>
-            //   <strong>${formatDuration(station.avgQcSeconds)}</strong>
-            // </div>
-            // <div class="metric-pill">
-            //   <span>Siklus Terakhir</span>
-            //   <strong>${formatDuration(station.lastCycleSeconds)}</strong>
-            // </div>
-            // <div class="metric-pill">
-            //   <span>Availability</span>
-            //   <strong>${station.availabilityRate}%</strong>
-            // </div>
+
   stationList.querySelectorAll(".station-card").forEach((card) => {
     card.addEventListener("click", () => {
       loadHistory(card.dataset.machineCode);
