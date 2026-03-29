@@ -105,10 +105,10 @@ function formatHumanDuration(totalSeconds, options = {}) {
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainingSeconds = seconds % 60;
 
-  if (days) parts.push(`${days} Hari`);
-  if (hours) parts.push(`${hours} Jam`);
-  if (minutes) parts.push(`${minutes} Menit`);
-  if (remainingSeconds || !parts.length) parts.push(`${remainingSeconds} Detik`);
+  if (days) parts.push(`${days} Day${days === 1 ? "" : "s"}`);
+  if (hours) parts.push(`${hours} Hour${hours === 1 ? "" : "s"}`);
+  if (minutes) parts.push(`${minutes} Minute${minutes === 1 ? "" : "s"}`);
+  if (remainingSeconds || !parts.length) parts.push(`${remainingSeconds} Second${remainingSeconds === 1 ? "" : "s"}`);
 
   if (options.compactParts && parts.length > options.compactParts) {
     return parts.slice(0, options.compactParts).join(" ");
@@ -125,10 +125,10 @@ function formatHumanDurationCompact(totalSeconds) {
   const remainingSeconds = seconds % 60;
   const parts = [];
 
-  if (days) parts.push(`${days}hri`);
-  if (hours) parts.push(`${hours}j`);
+  if (days) parts.push(`${days}d`);
+  if (hours) parts.push(`${hours}h`);
   if (minutes) parts.push(`${minutes}m`);
-  if (remainingSeconds || !parts.length) parts.push(`${remainingSeconds}d`);
+  if (remainingSeconds || !parts.length) parts.push(`${remainingSeconds}s`);
 
   return parts.slice(0, 2).join(" ");
 }
@@ -158,7 +158,7 @@ function downloadCsv(filename, rows) {
 
 function renderLineChart(container, points, options = {}) {
   if (!points.length) {
-    container.innerHTML = `<div class="empty-state">Belum ada data untuk divisualisasikan.</div>`;
+    container.innerHTML = `<div class="empty-state">No data available for visualization.</div>`;
     return;
   }
 
@@ -204,7 +204,7 @@ function renderLineChart(container, points, options = {}) {
 function renderMultiLineChart(container, series) {
   const activeSeries = series.filter((item) => item.points.length);
   if (!activeSeries.length) {
-    container.innerHTML = `<div class="empty-state">Belum ada data untuk divisualisasikan.</div>`;
+    container.innerHTML = `<div class="empty-state">No data available for visualization.</div>`;
     return;
   }
 

@@ -57,7 +57,7 @@ function renderOverview(payload) {
   document.getElementById("legendReject").textContent = reject;
   document.getElementById("goodRateHint").textContent = `Yield ${yieldRate}%`;
   document.getElementById("rejectRateHint").textContent = `Reject ${rejectRate}%`;
-  document.getElementById("productionHealth").textContent = `${latestStations.length} stasiun aktif, downtime ${formatDurationCompact(totalDowntimeSeconds)}`;
+  document.getElementById("productionHealth").textContent = `${latestStations.length} active stations, downtime ${formatDurationCompact(totalDowntimeSeconds)}`;
 
   document.getElementById("qualityDonut").style.setProperty("--good-angle", `${yieldRate * 3.6}deg`);
   renderStationPerformanceChart(payload.stations || []);
@@ -66,7 +66,7 @@ function renderOverview(payload) {
 function renderStations(stations) {
   const stationList = document.getElementById("stationList");
   if (!stations.length) {
-    stationList.innerHTML = `<div class="empty-state">Belum ada data stasiun. Kirim event MQTT dari ESP8266 untuk memulai.</div>`;
+    stationList.innerHTML = `<div class="empty-state">No station data yet. Send MQTT events from ESP8266 to get started.</div>`;
     return;
   }
 
@@ -84,7 +84,7 @@ function renderStations(stations) {
           </div>
           <div class="station-metrics">
             <div class="metric-pill">
-              <span>Produksi</span>
+              <span>Production</span>
               <strong>${station.productionCount}</strong>
             </div>
             <div class="metric-pill">
@@ -100,7 +100,7 @@ function renderStations(stations) {
               <strong>${formatDowntime(station.downtimeSeconds, station.downtimeCount)}</strong>
             </div>
             <div class="metric-pill">
-              <span>Waktu Operasi Aktual</span>
+              <span>Actual Operating Time</span>
               <strong>${formatDuration(station.actualOperatingSeconds)}</strong>
             </div>
           </div>
@@ -134,7 +134,7 @@ function renderStations(stations) {
             </div>
             
             <div class="metric-pill">
-              <span>Produksi</span>
+              <span>Production</span>
               <strong>${station.productionCount}</strong>
             </div>
             <div class="metric-pill">
@@ -146,11 +146,11 @@ function renderStations(stations) {
               <strong>${formatDowntime(station.downtimeSeconds, station.downtimeCount)}</strong>
             </div>
             <div class="metric-pill">
-              <span>Waktu Operasi Aktual</span>
+              <span>Actual Operating Time</span>
               <strong>${formatDuration(station.actualOperatingSeconds)}</strong>
             </div>
             <div class="metric-pill">
-              <span>Rata-rata Waktu Operasi</span>
+              <span>Average Operating Time</span>
               <strong>${formatDuration(station.avgQcSeconds)}</strong>
             </div>
           </div>
@@ -190,7 +190,7 @@ function renderHistory(data) {
       <strong>${Number(data.plannedRuntimeSeconds || 0)} s</strong>
     </div>
     <div class="metric-pill">
-      <span>10 Event Terakhir</span>
+      <span>Last 10 Events</span>
       <strong>${data.events.length}</strong>
     </div>
     <div class="metric-pill">
@@ -203,7 +203,7 @@ function renderHistory(data) {
 
   const historyList = document.getElementById("historyList");
   if (!data.events.length) {
-    historyList.innerHTML = `<div class="empty-state">Belum ada riwayat event untuk mesin ini.</div>`;
+    historyList.innerHTML = `<div class="empty-state">No event history for this machine yet.</div>`;
     return;
   }
 
@@ -213,7 +213,7 @@ function renderHistory(data) {
       const resultClass = event.result === "GOOD" ? "result-good" : event.result === "REJECT" ? "result-reject" : "";
       const eventLabel = downtime ? "DOWNTIME" : event.eventType === "qc_start" ? "QC START" : "QC END";
       const resultLabel = downtime ? "DOWNTIME" : event.result || "-";
-      const durationLabel = downtime ? "Durasi Downtime" : "Durasi Operasi";
+      const durationLabel = downtime ? "Downtime Duration" : "Operating Duration";
       return `
         <article class="history-item ${resultClass}">
           <time>${formatDateTime(event.timestamp)}</time>
@@ -229,7 +229,7 @@ function renderHistory(data) {
 function renderStationPerformanceChart(stations) {
   const chart = document.getElementById("stationPerformanceChart");
   if (!stations.length) {
-    chart.innerHTML = `<div class="empty-state">Belum ada data untuk divisualisasikan.</div>`;
+    chart.innerHTML = `<div class="empty-state">No data available for visualization.</div>`;
     return;
   }
 
@@ -260,7 +260,7 @@ function renderStationPerformanceChart(stations) {
 function renderSelectedStationChart(cycles) {
   const chart = document.getElementById("selectedStationChart");
   if (!cycles.length) {
-    chart.innerHTML = `Belum ada data durasi produksi. Event downtime tidak ditampilkan pada grafik ini.`;
+    chart.innerHTML = `No production duration data yet. Downtime events are excluded from this chart.`;
     return;
   }
 

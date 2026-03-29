@@ -14,19 +14,19 @@
           <p class="eyebrow">Dashboard OEE</p>
           <h1>Station Monitoring</h1>
           <p class="hero-copy">
-            Pantau setiap stasiun produksi secara real-time.
+            Monitor every production station in real time.
           </p>
         </div>
         <div class="hero-right">
           <nav class="top-nav">
             <a href="/" class="active">Dashboard</a>
-            <a href="/station-history.html">History Station</a>
-            <a href="/all-history.html">History Semua Station</a>
-            <a href="/settings.html">Settings Station</a>
+            <a href="/station-history.html">Station History</a>
+            <a href="/all-history.html">All Station History</a>
+            <a href="/settings.html">Station Settings</a>
           </nav>
           <div class="time-display-toggle" data-time-display-toggle>
-            <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="raw">Detik Asli</button>
-            <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="human">Format Readable</button>
+            <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="raw">Raw Seconds</button>
+            <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="human">Readable Format</button>
           </div>
           <div class="hero-meta">
             <div class="meta-card">
@@ -43,9 +43,9 @@
 
       <section class="overview-grid">
         <article class="stat-card">
-          <span>Total Produksi</span>
+          <span>Total Production</span>
           <strong id="totalProduction">0</strong>
-          <small id="productionHealth">Produk selesai</small>
+          <small id="productionHealth">Completed products</small>
         </article>
         <article class="stat-card">
           <span>Total GOOD</span>
@@ -58,17 +58,17 @@
           <small id="rejectRateHint">Defect live</small>
         </article>
         <article class="stat-card">
-          <span>Total Waktu Operasi Aktual</span>
+          <span>Total Actual Operating Time</span>
           <strong id="totalQcTime">0 s</strong>
-          <small>Akumulasi semua stasiun</small>
+          <small>Accumulated across all stations</small>
         </article>
       </section>
 
       <section class="analytics-grid">
         <article class="chart-card">
           <div class="section-title">
-            <h2>Komposisi Output</h2>
-            <p>Perbandingan GOOD vs REJECT</p>
+            <h2>Output Composition</h2>
+            <p>GOOD vs REJECT comparison</p>
           </div>
           <div class="donut-shell">
             <div id="qualityDonut" class="donut-chart">
@@ -94,8 +94,8 @@
 
         <article class="chart-card">
           <div class="section-title">
-            <h2>Performa Antar Stasiun</h2>
-            <p>OEE dan volume produksi per mesin</p>
+            <h2>Cross-Station Performance</h2>
+            <p>OEE and production volume per machine</p>
           </div>
           <div id="stationPerformanceChart" class="bar-chart"></div>
         </article>
@@ -104,30 +104,30 @@
       <section class="content-grid">
         <div>
           <div class="section-title">
-            <h2>Stasiun Produksi</h2>
-            <p>Ringkasan tiap station</p>
+            <h2>Production Stations</h2>
+            <p>Summary for each station</p>
           </div>
           <div id="stationList" class="station-list"></div>
         </div>
 
         <aside class="detail-panel">
           <div class="section-title">
-            <h2>Detail Mesin</h2>
-            <p id="detailMachine">Pilih stasiun</p>
+            <h2>Machine Detail</h2>
+            <p id="detailMachine">Select a station</p>
           </div>
           <div id="machineSummary" class="machine-summary empty-state">
-            Pilih salah satu stasiun untuk melihat detail event QC.
+            Select a station to view QC event details.
           </div>
           <div class="section-title compact-title">
-            <h2>Tren 10 Siklus Terakhir</h2>
-            <p>Cycle time produksi, downtime tidak ikut digrafikkan</p>
+            <h2>Last 10 Cycle Trends</h2>
+            <p>Production cycle time only, downtime is excluded from the chart</p>
           </div>
           <div id="selectedStationChart" class="mini-chart empty-state">
-            Belum ada data siklus.
+            No cycle data yet.
           </div>
           <div class="section-title compact-title">
-            <h2>10 Event Terakhir</h2>
-            <p>Log terbaru</p>
+            <h2>Last 10 Events</h2>
+            <p>Latest log entries</p>
           </div>
           <div id="historyList" class="history-list"></div>
         </aside>

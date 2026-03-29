@@ -62,7 +62,7 @@ function renderStationHistory(data) {
   document.getElementById("totalQcEnd").textContent = completed.length;
   document.getElementById("totalGood").textContent = totalGood;
   document.getElementById("totalReject").textContent = totalReject;
-  document.getElementById("tableCaption").textContent = `${data.stationName} (${data.machineCode}) - ${events.length} event`;
+  document.getElementById("tableCaption").textContent = `${data.stationName} (${data.machineCode}) - ${events.length} events`;
 
   renderLineChart(
     document.getElementById("stationLineChart"),
@@ -92,7 +92,7 @@ function renderStationHistory(data) {
           `
         )
         .join("")
-    : `<tr><td colspan="5" class="empty-cell">Belum ada data pada range ini.</td></tr>`;
+    : `<tr><td colspan="5" class="empty-cell">No data available in this range.</td></tr>`;
 }
 
 function exportStationCsv() {

@@ -3,7 +3,7 @@ loadSettings();
 async function loadSettings() {
   const summary = await fetchJson("/api/stations");
   const stations = summary.stations || [];
-  document.getElementById("settingsCaption").textContent = `${stations.length} station tersedia`;
+  document.getElementById("settingsCaption").textContent = `${stations.length} stations available`;
 
   document.getElementById("settingsTableBody").innerHTML = stations.length
     ? stations
@@ -14,12 +14,12 @@ async function loadSettings() {
               <td>${escapeHtml(station.stationName)}</td>
               <td><input class="table-input" type="number" min="1" value="${Number(station.idealCycleSeconds || 0)}" data-field="idealCycleSeconds" /></td>
               <td><input class="table-input" type="number" min="1" value="${Number(station.plannedRuntimeSeconds || 0)}" data-field="plannedRuntimeSeconds" /></td>
-              <td><button class="primary-btn save-config-btn">Simpan</button></td>
+              <td><button class="primary-btn save-config-btn">Save</button></td>
             </tr>
           `
         )
         .join("")
-    : `<tr><td colspan="5" class="empty-cell">Belum ada station.</td></tr>`;
+    : `<tr><td colspan="5" class="empty-cell">No stations available yet.</td></tr>`;
 
   document.querySelectorAll(".save-config-btn").forEach((button) => {
     button.addEventListener("click", saveRow);
@@ -43,9 +43,9 @@ async function saveRow(event) {
     })
   });
 
-  event.target.textContent = "Tersimpan";
+  event.target.textContent = "Saved";
   setTimeout(() => {
-    event.target.textContent = "Simpan";
+    event.target.textContent = "Save";
   }, 1200);
 }
 

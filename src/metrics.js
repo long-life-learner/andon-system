@@ -109,7 +109,8 @@ async function buildStationMetrics(db, station) {
   const totalDurationSeconds = Number(aggregate.totalDurationSeconds || 0);
   const downtimeSeconds = Number(aggregate.downtimeSeconds || 0);
   const downtimeCount = Number(aggregate.downtimeCount || 0);
-  const actualOperatingSeconds = Math.max(totalDurationSeconds - downtimeSeconds, 0);
+  // const actualOperatingSeconds = Math.max(totalDurationSeconds - downtimeSeconds, 0);
+  const actualOperatingSeconds = Math.max(Number(station.plannedRuntimeSeconds) - downtimeSeconds, 0);
   const durationCount = Number(aggregate.durationCount || 0);
   const avgQcSeconds = durationCount ? actualOperatingSeconds / durationCount : null;
   const lastCycleSeconds = latestEnd && latestEnd.durationSeconds !== null ? Number(latestEnd.durationSeconds) : null;

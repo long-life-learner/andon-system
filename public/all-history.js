@@ -41,7 +41,7 @@ function renderAllHistory(data) {
   document.getElementById("totalStations").textContent = data.stations.length;
   document.getElementById("totalGood").textContent = totalGood;
   document.getElementById("totalReject").textContent = totalReject;
-  document.getElementById("tableCaption").textContent = `${events.length} event pada seluruh station`;
+  document.getElementById("tableCaption").textContent = `${events.length} events across all stations`;
 
   const series = data.stations.map((station) => ({
     name: station.machineCode,
@@ -74,7 +74,7 @@ function renderAllHistory(data) {
           `
         )
         .join("")
-    : `<tr><td colspan="6" class="empty-cell">Belum ada data pada range ini.</td></tr>`;
+    : `<tr><td colspan="6" class="empty-cell">No data available in this range.</td></tr>`;
 }
 
 async function fetchJson(url) {

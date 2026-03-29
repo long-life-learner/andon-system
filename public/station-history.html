@@ -11,19 +11,19 @@
     <div class="page-shell">
       <header class="hero hero-compact">
         <div class="hero-copy-wrap">
-          <p class="eyebrow">History Per Station</p>
-          <h1>Detail Riwayat Event Station</h1>
-          <p class="hero-copy">Lihat seluruh event, trend cycle time, filter waktu, dan export CSV per station.</p>
+          <p class="eyebrow">Station History</p>
+          <h1>Station Event History Detail</h1>
+          <p class="hero-copy">View complete event history, cycle time trends, time filters, and CSV export per station.</p>
         </div>
         <nav class="top-nav">
           <a href="/">Dashboard</a>
-          <a href="/station-history.html" class="active">History Station</a>
-          <a href="/all-history.html">History Semua Station</a>
-          <a href="/settings.html">Settings Station</a>
+          <a href="/station-history.html" class="active">Station History</a>
+          <a href="/all-history.html">All Station History</a>
+          <a href="/settings.html">Station Settings</a>
         </nav>
         <div class="time-display-toggle" data-time-display-toggle>
-          <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="raw">Detik Asli</button>
-          <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="human">Format Readable</button>
+          <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="raw">Raw Seconds</button>
+          <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="human">Readable Format</button>
         </div>
       </header>
 
@@ -34,15 +34,15 @@
             <select id="stationSelect"></select>
           </label>
           <label>
-            <span>Dari</span>
+            <span>From</span>
             <input id="fromInput" type="datetime-local" />
           </label>
           <label>
-            <span>Sampai</span>
+            <span>To</span>
             <input id="toInput" type="datetime-local" />
           </label>
           <div class="button-row">
-            <button id="applyFilterBtn" class="primary-btn">Terapkan</button>
+            <button id="applyFilterBtn" class="primary-btn">Apply</button>
             <button id="resetFilterBtn" class="secondary-btn">Reset</button>
             <button id="exportBtn" class="secondary-btn">Export CSV</button>
           </div>
@@ -60,7 +60,7 @@
         <article class="chart-card">
           <div class="section-title">
             <h2>Trend Cycle Time</h2>
-            <p>Line chart berdasarkan event `qc_end` pada rentang waktu terpilih</p>
+            <p>Line chart based on `qc_end` events within the selected time range</p>
           </div>
           <div id="stationLineChart" class="chart-shell"></div>
         </article>
@@ -68,8 +68,8 @@
 
       <section class="table-card">
         <div class="section-title">
-          <h2>Tabel Event</h2>
-          <p id="tableCaption">Memuat data...</p>
+          <h2>Event Table</h2>
+          <p id="tableCaption">Loading data...</p>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -79,7 +79,7 @@
                 <th>Station</th>
                 <th>Event</th>
                 <th>Result</th>
-                <th>Durasi QC (s)</th>
+                <th>Duration (s)</th>
               </tr>
             </thead>
             <tbody id="eventTableBody"></tbody>
