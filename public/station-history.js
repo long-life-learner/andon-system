@@ -3,6 +3,8 @@ let stationHistoryState = {
   currentData: null
 };
 
+initTimeDisplayToggle();
+
 document.getElementById("applyFilterBtn").addEventListener("click", loadStationHistory);
 document.getElementById("resetFilterBtn").addEventListener("click", async () => {
   document.getElementById("fromInput").value = "";
@@ -13,6 +15,11 @@ document.getElementById("exportBtn").addEventListener("click", exportStationCsv)
 document.getElementById("stationSelect").addEventListener("change", loadStationHistory);
 
 initStationHistoryPage();
+window.addEventListener("time-display-mode-changed", () => {
+  if (stationHistoryState.currentData) {
+    renderStationHistory(stationHistoryState.currentData);
+  }
+});
 
 async function initStationHistoryPage() {
   const summary = await fetchJson("/api/stations");
@@ -60,6 +67,7 @@ function renderStationHistory(data) {
   renderLineChart(
     document.getElementById("stationLineChart"),
     completed
+      .filter((event) => event.result)
       .filter((event) => event.durationSeconds !== null && event.durationSeconds !== undefined)
       .slice()
       .reverse()
@@ -78,8 +86,8 @@ function renderStationHistory(data) {
               <td>${formatDateTime(event.timestamp)}</td>
               <td>${escapeHtml(event.stationName)}</td>
               <td>${escapeHtml(event.eventType)}</td>
-              <td>${escapeHtml(event.result || "-")}</td>
-              <td>${formatDurationValue(event.durationSeconds)}</td>
+              <td>${escapeHtml(getResultLabel(event))}</td>
+              <td>${formatDuration(event.durationSeconds)}</td>
             </tr>
           `
         )
@@ -100,7 +108,7 @@ function exportStationCsv() {
       event.machineCode,
       event.stationName,
       event.eventType,
-      event.result || "",
+      getResultLabel(event),
       formatDurationValue(event.durationSeconds)
     ])
   ];
@@ -115,4 +123,12 @@ async function fetchJson(url) {
 
 function formatDurationValue(value) {
   return value === null || value === undefined ? "-" : Number(value);
+}
+
+function getResultLabel(event) {
+  return isDowntimeEvent(event) ? "DOWNTIME" : event.result || "-";
+}
+
+function isDowntimeEvent(event) {
+  return event.eventType === "qc_end" && !event.result && event.durationSeconds !== null && event.durationSeconds !== undefined && Number(event.durationSeconds) < 3600;
 }

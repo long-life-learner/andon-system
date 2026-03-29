@@ -1,3 +1,5 @@
+const TIME_DISPLAY_STORAGE_KEY = "iot.timeDisplayMode";
+
 function formatDateTime(value) {
   if (!value) {
     return "-";
@@ -26,6 +28,109 @@ function formatLocalInput(value) {
 
 function localInputToIso(value) {
   return value ? new Date(value).toISOString() : "";
+}
+
+function getTimeDisplayMode() {
+  const saved = window.localStorage.getItem(TIME_DISPLAY_STORAGE_KEY);
+  return saved === "human" ? "human" : "raw";
+}
+
+function setTimeDisplayMode(mode) {
+  const normalizedMode = mode === "human" ? "human" : "raw";
+  window.localStorage.setItem(TIME_DISPLAY_STORAGE_KEY, normalizedMode);
+  window.dispatchEvent(new CustomEvent("time-display-mode-changed", { detail: normalizedMode }));
+}
+
+function initTimeDisplayToggle(root = document) {
+  root.querySelectorAll("[data-time-display-toggle]").forEach((toggle) => {
+    const buttons = [...toggle.querySelectorAll("[data-time-mode]")];
+    const applyActiveState = () => {
+      const currentMode = getTimeDisplayMode();
+      buttons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.timeMode === currentMode);
+      });
+    };
+
+    buttons.forEach((button) => {
+      if (button.dataset.boundTimeToggle === "true") {
+        return;
+      }
+
+      button.dataset.boundTimeToggle = "true";
+      button.addEventListener("click", () => {
+        setTimeDisplayMode(button.dataset.timeMode);
+      });
+    });
+
+    applyActiveState();
+    window.addEventListener("time-display-mode-changed", applyActiveState);
+  });
+}
+
+function formatDuration(value, options = {}) {
+  if (value === null || value === undefined || value === "") {
+    return options.empty ?? "-";
+  }
+
+  const seconds = Math.max(0, Number(value));
+  if (!Number.isFinite(seconds)) {
+    return options.empty ?? "-";
+  }
+
+  return getTimeDisplayMode() === "human"
+    ? formatHumanDuration(seconds, options)
+    : `${seconds} s`;
+}
+
+function formatDurationCompact(value, options = {}) {
+  if (value === null || value === undefined || value === "") {
+    return options.empty ?? "-";
+  }
+
+  const seconds = Math.max(0, Number(value));
+  if (!Number.isFinite(seconds)) {
+    return options.empty ?? "-";
+  }
+
+  return getTimeDisplayMode() === "human"
+    ? formatHumanDurationCompact(seconds)
+    : `${seconds}s`;
+}
+
+function formatHumanDuration(totalSeconds, options = {}) {
+  const seconds = Math.floor(totalSeconds);
+  const parts = [];
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+
+  if (days) parts.push(`${days} Hari`);
+  if (hours) parts.push(`${hours} Jam`);
+  if (minutes) parts.push(`${minutes} Menit`);
+  if (remainingSeconds || !parts.length) parts.push(`${remainingSeconds} Detik`);
+
+  if (options.compactParts && parts.length > options.compactParts) {
+    return parts.slice(0, options.compactParts).join(" ");
+  }
+
+  return parts.join(" ");
+}
+
+function formatHumanDurationCompact(totalSeconds) {
+  const seconds = Math.floor(totalSeconds);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  const parts = [];
+
+  if (days) parts.push(`${days}hri`);
+  if (hours) parts.push(`${hours}j`);
+  if (minutes) parts.push(`${minutes}m`);
+  if (remainingSeconds || !parts.length) parts.push(`${remainingSeconds}d`);
+
+  return parts.slice(0, 2).join(" ");
 }
 
 function escapeHtml(value) {

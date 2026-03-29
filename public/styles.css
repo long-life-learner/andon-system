@@ -87,6 +87,19 @@ body {
   justify-content: flex-end;
 }
 
+.time-display-toggle {
+  display: inline-flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.time-toggle-btn.active {
+  color: #03121c;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  font-weight: 700;
+}
+
 .top-nav a {
   color: var(--ink);
   text-decoration: none;
@@ -589,7 +602,8 @@ body {
   .analytics-grid,
   .donut-shell,
   .bar-row,
-  .filter-grid {
+  .filter-grid,
+  .time-display-toggle {
     grid-template-columns: 1fr;
     display: grid;
   }

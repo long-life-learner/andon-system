@@ -90,8 +90,8 @@ function normalizeEventPayload(payload) {
   }
 
   const result = eventType === "qc_end" ? String(payload.result || "").trim().toUpperCase() : null;
-  if (eventType === "qc_end" && !["GOOD", "REJECT"].includes(result)) {
-    throw new Error("result must be GOOD or REJECT when eventType is qc_end");
+  if (eventType === "qc_end" && result && !["GOOD", "REJECT"].includes(result)) {
+    throw new Error("result must be GOOD or REJECT when provided for eventType qc_end");
   }
 
   return {
@@ -99,7 +99,7 @@ function normalizeEventPayload(payload) {
     stationName: payload.stationName ? String(payload.stationName).trim() : machineCode,
     timestamp,
     eventType,
-    result,
+    result: result || null,
     metaJson: JSON.stringify({
       firmwareVersion: payload.firmwareVersion || null,
       wifiSsid: payload.wifiSsid || null,

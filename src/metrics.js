@@ -21,10 +21,11 @@ async function buildDashboardSummary(db) {
         acc.productionCount += item.productionCount;
         acc.goodCount += item.goodCount;
         acc.rejectCount += item.rejectCount;
-        acc.totalQcSeconds += item.totalQcSeconds;
+        acc.totalActualOperatingSeconds += item.actualOperatingSeconds;
+        acc.totalDowntimeSeconds += item.downtimeSeconds;
         return acc;
       },
-      { productionCount: 0, goodCount: 0, rejectCount: 0, totalQcSeconds: 0 }
+      { productionCount: 0, goodCount: 0, rejectCount: 0, totalActualOperatingSeconds: 0, totalDowntimeSeconds: 0 }
     ),
     stations: stationMetrics
   };
@@ -76,11 +77,13 @@ async function buildStationMetrics(db, station) {
   const [aggregateRows] = await db.execute(
     `
       SELECT
-        SUM(CASE WHEN event_type = 'qc_end' THEN 1 ELSE 0 END) AS productionCount,
+        SUM(CASE WHEN event_type = 'qc_end' AND result IS NOT NULL THEN 1 ELSE 0 END) AS productionCount,
         SUM(CASE WHEN event_type = 'qc_end' AND result = 'GOOD' THEN 1 ELSE 0 END) AS goodCount,
         SUM(CASE WHEN event_type = 'qc_end' AND result = 'REJECT' THEN 1 ELSE 0 END) AS rejectCount,
-        SUM(CASE WHEN event_type = 'qc_end' THEN COALESCE(duration_seconds, 0) ELSE 0 END) AS totalQcSeconds,
-        SUM(CASE WHEN event_type = 'qc_end' AND duration_seconds IS NOT NULL THEN 1 ELSE 0 END) AS durationCount
+        SUM(CASE WHEN event_type = 'qc_end' AND duration_seconds IS NOT NULL THEN COALESCE(duration_seconds, 0) ELSE 0 END) AS totalDurationSeconds,
+        SUM(CASE WHEN event_type = 'qc_end' AND result IS NULL AND duration_seconds IS NOT NULL AND duration_seconds < 3600 THEN COALESCE(duration_seconds, 0) ELSE 0 END) AS downtimeSeconds,
+        SUM(CASE WHEN event_type = 'qc_end' AND result IS NULL AND duration_seconds IS NOT NULL AND duration_seconds < 3600 THEN 1 ELSE 0 END) AS downtimeCount,
+        SUM(CASE WHEN event_type = 'qc_end' AND result IS NOT NULL AND duration_seconds IS NOT NULL THEN 1 ELSE 0 END) AS durationCount
       FROM qc_events
       WHERE machine_code = ?
     `,
@@ -91,7 +94,7 @@ async function buildStationMetrics(db, station) {
     `
       SELECT duration_seconds AS durationSeconds
       FROM qc_events
-      WHERE machine_code = ? AND event_type = 'qc_end'
+      WHERE machine_code = ? AND event_type = 'qc_end' AND result IS NOT NULL
       ORDER BY timestamp DESC
       LIMIT 1
     `,
@@ -103,13 +106,16 @@ async function buildStationMetrics(db, station) {
   const productionCount = Number(aggregate.productionCount || 0);
   const goodCount = Number(aggregate.goodCount || 0);
   const rejectCount = Number(aggregate.rejectCount || 0);
-  const totalQcSeconds = Number(aggregate.totalQcSeconds || 0);
+  const totalDurationSeconds = Number(aggregate.totalDurationSeconds || 0);
+  const downtimeSeconds = Number(aggregate.downtimeSeconds || 0);
+  const downtimeCount = Number(aggregate.downtimeCount || 0);
+  const actualOperatingSeconds = Math.max(totalDurationSeconds - downtimeSeconds, 0);
   const durationCount = Number(aggregate.durationCount || 0);
-  const avgQcSeconds = durationCount ? totalQcSeconds / durationCount : null;
+  const avgQcSeconds = durationCount ? actualOperatingSeconds / durationCount : null;
   const lastCycleSeconds = latestEnd && latestEnd.durationSeconds !== null ? Number(latestEnd.durationSeconds) : null;
   const quality = productionCount ? goodCount / productionCount : 0;
-  const availability = Number(station.plannedRuntimeSeconds) > 0 ? Math.min(totalQcSeconds / Number(station.plannedRuntimeSeconds), 1) : 0;
-  const performance = totalQcSeconds > 0 ? Math.min((Number(station.idealCycleSeconds) * productionCount) / totalQcSeconds, 1) : 0;
+  const availability = Number(station.plannedRuntimeSeconds) > 0 ? Math.min(actualOperatingSeconds / Number(station.plannedRuntimeSeconds), 1) : 0;
+  const performance = actualOperatingSeconds > 0 ? Math.min((Number(station.idealCycleSeconds) * productionCount) / actualOperatingSeconds, 1) : 0;
   const oee = availability * performance * quality;
 
   return {
@@ -118,7 +124,9 @@ async function buildStationMetrics(db, station) {
     productionCount,
     goodCount,
     rejectCount,
-    totalQcSeconds,
+    actualOperatingSeconds,
+    downtimeSeconds,
+    downtimeCount,
     avgQcSeconds: avgQcSeconds === null ? null : round2(avgQcSeconds),
     lastCycleSeconds,
     qualityRate: round2(quality * 100),

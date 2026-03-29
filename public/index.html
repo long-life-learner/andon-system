@@ -24,6 +24,10 @@
             <a href="/all-history.html">History Semua Station</a>
             <a href="/settings.html">Settings Station</a>
           </nav>
+          <div class="time-display-toggle" data-time-display-toggle>
+            <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="raw">Detik Asli</button>
+            <button type="button" class="secondary-btn time-toggle-btn" data-time-mode="human">Format Readable</button>
+          </div>
           <div class="hero-meta">
             <div class="meta-card">
               <span>Live Link</span>
@@ -54,7 +58,7 @@
           <small id="rejectRateHint">Defect live</small>
         </article>
         <article class="stat-card">
-          <span>Total Waktu QC</span>
+          <span>Total Waktu Operasi Aktual</span>
           <strong id="totalQcTime">0 s</strong>
           <small>Akumulasi semua stasiun</small>
         </article>
@@ -116,7 +120,7 @@
           </div>
           <div class="section-title compact-title">
             <h2>Tren 10 Siklus Terakhir</h2>
-            <p>Cycle time dan hasil QC</p>
+            <p>Cycle time produksi, downtime tidak ikut digrafikkan</p>
           </div>
           <div id="selectedStationChart" class="mini-chart empty-state">
             Belum ada data siklus.
@@ -131,6 +135,7 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/common.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>

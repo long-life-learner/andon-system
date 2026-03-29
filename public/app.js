@@ -1,6 +1,10 @@
 const socket = io();
 let latestStations = [];
 let selectedMachineCode = null;
+let latestPayload = null;
+let latestHistoryData = null;
+
+initTimeDisplayToggle();
 
 socket.on("connect", () => {
   document.getElementById("connectionStatus").textContent = "Connected";
@@ -11,6 +15,7 @@ socket.on("disconnect", () => {
 });
 
 socket.on("dashboard:update", (payload) => {
+  latestPayload = payload;
   latestStations = payload.stations || [];
   renderOverview(payload);
   renderStations(latestStations);
@@ -29,6 +34,7 @@ async function loadHistory(machineCode) {
   highlightActiveStation();
   const response = await fetch(`/api/stations/${machineCode}/history`);
   const data = await response.json();
+  latestHistoryData = data;
   renderHistory(data);
 }
 
@@ -38,18 +44,20 @@ function renderOverview(payload) {
   const reject = payload.totals.rejectCount || 0;
   const yieldRate = total ? Math.round((good / total) * 100) : 0;
   const rejectRate = total ? Math.round((reject / total) * 100) : 0;
+  const actualOperatingSeconds = Number(payload.totals.totalActualOperatingSeconds || 0);
+  const totalDowntimeSeconds = Number(payload.totals.totalDowntimeSeconds || 0);
 
   document.getElementById("generatedAt").textContent = formatDateTime(payload.generatedAt);
   document.getElementById("totalProduction").textContent = total;
   document.getElementById("totalGood").textContent = good;
   document.getElementById("totalReject").textContent = reject;
-  document.getElementById("totalQcTime").textContent = `${payload.totals.totalQcSeconds} s`;
+  document.getElementById("totalQcTime").textContent = formatDuration(actualOperatingSeconds);
   document.getElementById("yieldRate").textContent = `${yieldRate}%`;
   document.getElementById("legendGood").textContent = good;
   document.getElementById("legendReject").textContent = reject;
   document.getElementById("goodRateHint").textContent = `Yield ${yieldRate}%`;
   document.getElementById("rejectRateHint").textContent = `Reject ${rejectRate}%`;
-  document.getElementById("productionHealth").textContent = `${latestStations.length} stasiun aktif`;
+  document.getElementById("productionHealth").textContent = `${latestStations.length} stasiun aktif, downtime ${formatDurationCompact(totalDowntimeSeconds)}`;
 
   document.getElementById("qualityDonut").style.setProperty("--good-angle", `${yieldRate * 3.6}deg`);
   renderStationPerformanceChart(payload.stations || []);
@@ -65,8 +73,8 @@ function renderStations(stations) {
   stationList.innerHTML = stations
     .map(
       (station) => {
-        if (station.avgQcSeconds === null){
-return `
+        if (station.avgQcSeconds === null) {
+          return `
         <article class="station-card ${station.machineCode === selectedMachineCode ? "active" : ""}" data-machine-code="${station.machineCode}">
           <div class="station-header">
             <div>
@@ -83,20 +91,24 @@ return `
               <span>GOOD / DEFECT</span>
               <strong>${station.goodCount} / ${station.rejectCount}</strong>
             </div>
-
             <div class="metric-pill">
               <span>Quality</span>
               <strong>${station.qualityRate}%</strong>
             </div>
+            <div class="metric-pill">
+              <span>Downtime</span>
+              <strong>${formatDowntime(station.downtimeSeconds, station.downtimeCount)}</strong>
+            </div>
+            <div class="metric-pill">
+              <span>Waktu Operasi Aktual</span>
+              <strong>${formatDuration(station.actualOperatingSeconds)}</strong>
+            </div>
           </div>
         </article>
-      `
+      `;
         } else {
-          
-  const maxProduction = Math.max(station.productionCount, 1);
+          const productionWidth = Math.max(station.performanceRate || 0, 4);
 
-  const productionWidth = Math.max((station.productionCount / maxProduction) * 100, 4);
-      
           return `
         <article class="station-card ${station.machineCode === selectedMachineCode ? "active" : ""}" data-machine-code="${station.machineCode}">
           <div class="station-header">
@@ -129,17 +141,23 @@ return `
               <span>GOOD / DEFECT</span>
               <strong>${station.goodCount} / ${station.rejectCount}</strong>
             </div>
-             
             <div class="metric-pill">
-              <span>Rata-rata QC</span>
+              <span>Downtime</span>
+              <strong>${formatDowntime(station.downtimeSeconds, station.downtimeCount)}</strong>
+            </div>
+            <div class="metric-pill">
+              <span>Waktu Operasi Aktual</span>
+              <strong>${formatDuration(station.actualOperatingSeconds)}</strong>
+            </div>
+            <div class="metric-pill">
+              <span>Rata-rata Waktu Operasi</span>
               <strong>${formatDuration(station.avgQcSeconds)}</strong>
             </div>
-            
           </div>
         </article>
-      `
+      `;
         }
-        }
+      }
     )
     .join("");
 
@@ -152,7 +170,15 @@ return `
 
 function renderHistory(data) {
   document.getElementById("detailMachine").textContent = `${data.stationName} (${data.machineCode})`;
-  const completedCycles = data.events.filter((event) => event.eventType === "qc_end" && event.durationSeconds !== null && event.durationSeconds !== undefined);
+  const completedCycles = data.events.filter(
+    (event) =>
+      event.eventType === "qc_end" &&
+      event.result &&
+      event.durationSeconds !== null &&
+      event.durationSeconds !== undefined
+  );
+  const downtimeEvents = data.events.filter(isDowntimeEvent);
+  const totalDowntimeSeconds = downtimeEvents.reduce((acc, event) => acc + Number(event.durationSeconds || 0), 0);
 
   document.getElementById("machineSummary").innerHTML = `
     <div class="metric-pill">
@@ -167,6 +193,10 @@ function renderHistory(data) {
       <span>10 Event Terakhir</span>
       <strong>${data.events.length}</strong>
     </div>
+    <div class="metric-pill">
+      <span>Downtime</span>
+      <strong>${formatDowntime(totalDowntimeSeconds, downtimeEvents.length)}</strong>
+    </div>
   `;
 
   renderSelectedStationChart(completedCycles);
@@ -179,13 +209,17 @@ function renderHistory(data) {
 
   historyList.innerHTML = data.events
     .map((event) => {
+      const downtime = isDowntimeEvent(event);
       const resultClass = event.result === "GOOD" ? "result-good" : event.result === "REJECT" ? "result-reject" : "";
+      const eventLabel = downtime ? "DOWNTIME" : event.eventType === "qc_start" ? "QC START" : "QC END";
+      const resultLabel = downtime ? "DOWNTIME" : event.result || "-";
+      const durationLabel = downtime ? "Durasi Downtime" : "Durasi Operasi";
       return `
         <article class="history-item ${resultClass}">
           <time>${formatDateTime(event.timestamp)}</time>
-          <strong>${event.eventType === "qc_start" ? "QC START" : "QC END"}</strong>
-          <div class="history-meta">Result: ${event.result || "-"}</div>
-          <div class="history-meta">Durasi QC: ${formatDuration(event.durationSeconds)}</div>
+          <strong>${eventLabel}</strong>
+          <div class="history-meta">Result: ${resultLabel}</div>
+          <div class="history-meta">${durationLabel}: ${formatDuration(event.durationSeconds)}</div>
         </article>
       `;
     })
@@ -226,7 +260,7 @@ function renderStationPerformanceChart(stations) {
 function renderSelectedStationChart(cycles) {
   const chart = document.getElementById("selectedStationChart");
   if (!cycles.length) {
-    chart.innerHTML = `Belum ada data durasi siklus.`;
+    chart.innerHTML = `Belum ada data durasi produksi. Event downtime tidak ditampilkan pada grafik ini.`;
     return;
   }
 
@@ -250,31 +284,28 @@ function renderSelectedStationChart(cycles) {
     .join("");
 }
 
+window.addEventListener("time-display-mode-changed", () => {
+  if (latestPayload) {
+    renderOverview(latestPayload);
+    renderStations(latestStations);
+    highlightActiveStation();
+  }
+
+  if (latestHistoryData) {
+    renderHistory(latestHistoryData);
+  }
+});
+
 function highlightActiveStation() {
   document.querySelectorAll(".station-card").forEach((card) => {
     card.classList.toggle("active", card.dataset.machineCode === selectedMachineCode);
   });
 }
 
-function formatDateTime(value) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Date(value).toLocaleString("id-ID", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-  });
+function isDowntimeEvent(event) {
+  return event.eventType === "qc_end" && !event.result && event.durationSeconds !== null && event.durationSeconds !== undefined && Number(event.durationSeconds) < 3600;
 }
 
-function formatDuration(value) {
-  return value === null || value === undefined ? "-" : `${Number(value)} s`;
-}
-
-function formatDurationCompact(value) {
-  return value === null || value === undefined ? "-" : `${Number(value)}s`;
+function formatDowntime(seconds, count) {
+  return count ? `${formatDuration(seconds)} / ${count}x` : "-";
 }
