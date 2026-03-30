@@ -177,17 +177,17 @@ function renderHistory(data) {
       event.durationSeconds !== null &&
       event.durationSeconds !== undefined
   );
-  const downtimeEvents = data.events.filter(isDowntimeEvent);
-  const totalDowntimeSeconds = downtimeEvents.reduce((acc, event) => acc + Number(event.durationSeconds || 0), 0);
+  const totalDowntimeSeconds = Number(data.downtimeSeconds || 0);
+  const downtimeCount = Number(data.downtimeCount || 0);
 
   document.getElementById("machineSummary").innerHTML = `
     <div class="metric-pill">
       <span>Ideal Cycle</span>
-      <strong>${Number(data.idealCycleSeconds || 0)} s</strong>
+      <strong>${formatDuration(data.idealCycleSeconds)}</strong>
     </div>
     <div class="metric-pill">
       <span>Planned Runtime</span>
-      <strong>${Number(data.plannedRuntimeSeconds || 0)} s</strong>
+      <strong>${formatDuration(data.plannedRuntimeSeconds)}</strong>
     </div>
     <div class="metric-pill">
       <span>Last 10 Events</span>
@@ -195,7 +195,7 @@ function renderHistory(data) {
     </div>
     <div class="metric-pill">
       <span>Downtime</span>
-      <strong>${formatDowntime(totalDowntimeSeconds, downtimeEvents.length)}</strong>
+      <strong>${formatDowntime(totalDowntimeSeconds, downtimeCount)}</strong>
     </div>
   `;
 

@@ -50,6 +50,8 @@ async function buildStationHistory(db, machineCode) {
     return { machineCode, stationName: machineCode, events: [] };
   }
 
+  const metrics = await buildStationMetrics(db, station);
+
   const [events] = await db.execute(
     `
       SELECT
@@ -69,6 +71,10 @@ async function buildStationHistory(db, machineCode) {
 
   return {
     ...station,
+    downtimeSeconds: metrics.downtimeSeconds,
+    downtimeCount: metrics.downtimeCount,
+    actualOperatingSeconds: metrics.actualOperatingSeconds,
+    productionCount: metrics.productionCount,
     events: events.map(normalizeEventRow)
   };
 }
