@@ -73,7 +73,7 @@ function renderStations(stations) {
   stationList.innerHTML = stations
     .map(
       (station) => {
-        if (station.avgQcSeconds === null) {
+        if (station.stationType === "quality_only") {
           return `
         <article class="station-card ${station.machineCode === selectedMachineCode ? "active" : ""}" data-machine-code="${station.machineCode}">
           <div class="station-header">
@@ -81,6 +81,7 @@ function renderStations(stations) {
               <div class="station-code">${station.machineCode}</div>
               <h3>${station.stationName}</h3>
             </div>
+            <div class="badge oee">QUALITY ONLY</div>
           </div>
           <div class="station-metrics">
             <div class="metric-pill">

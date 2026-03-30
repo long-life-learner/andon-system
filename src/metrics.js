@@ -5,10 +5,11 @@ async function buildDashboardSummary(db) {
       s.station_name AS stationName,
       s.ideal_cycle_seconds AS idealCycleSeconds,
       s.planned_runtime_seconds AS plannedRuntimeSeconds,
+      s.station_type AS stationType,
       MAX(e.timestamp) AS lastEventAt
     FROM stations s
     LEFT JOIN qc_events e ON e.machine_code = s.machine_code
-    GROUP BY s.machine_code, s.station_name, s.ideal_cycle_seconds, s.planned_runtime_seconds
+    GROUP BY s.machine_code, s.station_name, s.ideal_cycle_seconds, s.planned_runtime_seconds, s.station_type
     ORDER BY s.machine_code
   `);
 
@@ -38,7 +39,8 @@ async function buildStationHistory(db, machineCode) {
         machine_code AS machineCode,
         station_name AS stationName,
         ideal_cycle_seconds AS idealCycleSeconds,
-        planned_runtime_seconds AS plannedRuntimeSeconds
+        planned_runtime_seconds AS plannedRuntimeSeconds,
+        station_type AS stationType
       FROM stations
       WHERE machine_code = ?
     `,
@@ -128,6 +130,7 @@ async function buildStationMetrics(db, station) {
   return {
     machineCode: station.machineCode,
     stationName: station.stationName,
+    stationType: normalizeStationType(station.stationType),
     productionCount,
     goodCount,
     rejectCount,
@@ -155,6 +158,10 @@ function normalizeEventRow(row) {
 
 function round2(value) {
   return Math.round(value * 100) / 100;
+}
+
+function normalizeStationType(value) {
+  return String(value || "").trim().toLowerCase() === "quality_only" ? "quality_only" : "full";
 }
 
 module.exports = {

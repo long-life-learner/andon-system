@@ -44,12 +44,14 @@ app.post("/api/stations/:machineCode/config", asyncHandler(async (req, res) => {
   const stationName = (req.body.stationName || machineCode).trim();
   const idealCycleSeconds = Number(req.body.idealCycleSeconds || process.env.DEFAULT_IDEAL_CYCLE_SECONDS || 30);
   const plannedRuntimeSeconds = Number(req.body.plannedRuntimeSeconds || process.env.DEFAULT_PLANNED_RUNTIME_SECONDS || 28800);
+  const stationType = normalizeStationType(req.body.stationType);
 
   await upsertStationConfig({
     machineCode,
     stationName,
     idealCycleSeconds,
-    plannedRuntimeSeconds
+    plannedRuntimeSeconds,
+    stationType
   });
 
   const summary = await buildDashboardSummary(getDb());
@@ -127,6 +129,10 @@ function normalizeDateOrNull(value) {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : toMysqlDateTime(parsed);
+}
+
+function normalizeStationType(value) {
+  return String(value || "").trim().toLowerCase() === "quality_only" ? "quality_only" : "full";
 }
 
 async function bootstrap() {

@@ -5,7 +5,8 @@ async function buildStationEventHistory(db, machineCode, range = {}) {
         machine_code AS machineCode,
         station_name AS stationName,
         ideal_cycle_seconds AS idealCycleSeconds,
-        planned_runtime_seconds AS plannedRuntimeSeconds
+        planned_runtime_seconds AS plannedRuntimeSeconds,
+        station_type AS stationType
       FROM stations
       WHERE machine_code = ?
     `,
@@ -72,7 +73,8 @@ async function buildAllStationsEventHistory(db, range = {}) {
         machine_code AS machineCode,
         station_name AS stationName,
         ideal_cycle_seconds AS idealCycleSeconds,
-        planned_runtime_seconds AS plannedRuntimeSeconds
+        planned_runtime_seconds AS plannedRuntimeSeconds,
+        station_type AS stationType
       FROM stations
       ORDER BY machine_code
     `
@@ -83,7 +85,8 @@ async function buildAllStationsEventHistory(db, range = {}) {
     stations: stations.map((station) => ({
       ...station,
       idealCycleSeconds: Number(station.idealCycleSeconds),
-      plannedRuntimeSeconds: Number(station.plannedRuntimeSeconds)
+      plannedRuntimeSeconds: Number(station.plannedRuntimeSeconds),
+      stationType: normalizeStationType(station.stationType)
     })),
     events: events.map(normalizeEventRow)
   };
@@ -101,6 +104,10 @@ function buildFilterEcho(range) {
     from: range.from || null,
     to: range.to || null
   };
+}
+
+function normalizeStationType(value) {
+  return String(value || "").trim().toLowerCase() === "quality_only" ? "quality_only" : "full";
 }
 
 module.exports = {

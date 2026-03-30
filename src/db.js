@@ -39,10 +39,28 @@ async function createSchema() {
       station_name VARCHAR(255) NOT NULL,
       ideal_cycle_seconds DOUBLE NOT NULL DEFAULT 30,
       planned_runtime_seconds DOUBLE NOT NULL DEFAULT 28800,
+      station_type VARCHAR(32) NOT NULL DEFAULT 'full',
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
+
+  const [stationTypeColumns] = await pool.execute(
+    `
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'stations'
+        AND COLUMN_NAME = 'station_type'
+    `
+  );
+
+  if (!stationTypeColumns.length) {
+    await pool.query(`
+      ALTER TABLE stations
+      ADD COLUMN station_type VARCHAR(32) NOT NULL DEFAULT 'full'
+    `);
+  }
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS qc_events (
@@ -61,7 +79,25 @@ async function createSchema() {
   `);
 }
 
-async function upsertStationConfig({ machineCode, stationName, idealCycleSeconds, plannedRuntimeSeconds }) {
+async function upsertStationConfig({ machineCode, stationName, idealCycleSeconds, plannedRuntimeSeconds, stationType }) {
+  const normalizedStationType = normalizeStationType(stationType);
+
+  if (normalizedStationType) {
+    await getDb().execute(
+      `
+        INSERT INTO stations (machine_code, station_name, ideal_cycle_seconds, planned_runtime_seconds, station_type)
+        VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          station_name = VALUES(station_name),
+          ideal_cycle_seconds = VALUES(ideal_cycle_seconds),
+          planned_runtime_seconds = VALUES(planned_runtime_seconds),
+          station_type = VALUES(station_type)
+      `,
+      [machineCode, stationName, idealCycleSeconds, plannedRuntimeSeconds, normalizedStationType]
+    );
+    return;
+  }
+
   await getDb().execute(
     `
       INSERT INTO stations (machine_code, station_name, ideal_cycle_seconds, planned_runtime_seconds)
@@ -114,6 +150,11 @@ async function saveQcEvent(event) {
   );
 
   return { eventId: result.insertId, durationSeconds };
+}
+
+function normalizeStationType(value) {
+  const stationType = String(value || "").trim().toLowerCase();
+  return ["full", "quality_only"].includes(stationType) ? stationType : null;
 }
 
 function toMysqlDateTime(value) {

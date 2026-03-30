@@ -12,6 +12,12 @@ async function loadSettings() {
             <tr data-machine-code="${station.machineCode}">
               <td>${escapeHtml(station.machineCode)}</td>
               <td>${escapeHtml(station.stationName)}</td>
+              <td>
+                <select class="table-input" data-field="stationType">
+                  <option value="full" ${station.stationType === "quality_only" ? "" : "selected"}>Full OEE</option>
+                  <option value="quality_only" ${station.stationType === "quality_only" ? "selected" : ""}>Quality Only</option>
+                </select>
+              </td>
               <td><input class="table-input" type="number" min="1" value="${Number(station.idealCycleSeconds || 0)}" data-field="idealCycleSeconds" /></td>
               <td><input class="table-input" type="number" min="1" value="${Number(station.plannedRuntimeSeconds || 0)}" data-field="plannedRuntimeSeconds" /></td>
               <td><button class="primary-btn save-config-btn">Save</button></td>
@@ -19,7 +25,7 @@ async function loadSettings() {
           `
         )
         .join("")
-    : `<tr><td colspan="5" class="empty-cell">No stations available yet.</td></tr>`;
+    : `<tr><td colspan="6" class="empty-cell">No stations available yet.</td></tr>`;
 
   document.querySelectorAll(".save-config-btn").forEach((button) => {
     button.addEventListener("click", saveRow);
@@ -29,6 +35,7 @@ async function loadSettings() {
 async function saveRow(event) {
   const row = event.target.closest("tr");
   const machineCode = row.dataset.machineCode;
+  const stationType = row.querySelector('[data-field="stationType"]').value;
   const idealCycleSeconds = Number(row.querySelector('[data-field="idealCycleSeconds"]').value);
   const plannedRuntimeSeconds = Number(row.querySelector('[data-field="plannedRuntimeSeconds"]').value);
   const stationName = row.children[1].textContent.trim();
@@ -38,6 +45,7 @@ async function saveRow(event) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       stationName,
+      stationType,
       idealCycleSeconds,
       plannedRuntimeSeconds
     })
