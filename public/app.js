@@ -1,4 +1,6 @@
-const socket = io();
+const socket = io(window.location.origin, {
+  transports: ["polling"]
+});
 let latestStations = [];
 let selectedMachineCode = null;
 let latestPayload = null;

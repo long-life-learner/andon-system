@@ -11,7 +11,13 @@ require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // atau "https://andon.gmr8.my.id"
+    methods: ["GET", "POST"]
+  },
+  transports: ["polling"] // 🔥 penting untuk shared hosting
+});
 const port = Number(process.env.PORT || 3000);
 
 app.use(express.json());

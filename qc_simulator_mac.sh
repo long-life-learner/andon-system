@@ -10,13 +10,13 @@ do
   for ST in "${STATIONS[@]}"
   do
     TOPIC="factory/qc/$ST/event"
-    ST_NAME="STATION UJI COBA"
+    ST_NAME="$ST"
 
     START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
     echo "QC START $ST -> $TOPIC"
 
-    mqtt pub -h $BROKER -p $PORT -t $TOPIC -m "{
+    mosquitto_pub -h "$BROKER" -p "$PORT" -t "$TOPIC" -m "{
       \"machineCode\": \"$ST\",
       \"stationName\": \"$ST_NAME\",
       \"eventType\": \"qc_start\",
@@ -35,7 +35,7 @@ do
 
     echo "QC END $ST RESULT=$RESULT -> $TOPIC"
 
-    mqtt pub -h $BROKER -p $PORT -t $TOPIC -m "{
+    mosquitto_pub -h "$BROKER" -p "$PORT" -t "$TOPIC" -m "{
       \"machineCode\": \"$ST\",
       \"stationName\": \"$ST_NAME\",
       \"eventType\": \"qc_end\",
